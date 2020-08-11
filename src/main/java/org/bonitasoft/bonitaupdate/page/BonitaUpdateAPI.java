@@ -10,13 +10,14 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 import org.bonitasoft.bonitaupdate.page.PatchConfiguration.FOLDER;
+import org.bonitasoft.bonitaupdate.page.PatchConfiguration.ParametersConfiguration;
 import org.bonitasoft.bonitaupdate.patch.Patch;
 import org.bonitasoft.bonitaupdate.patch.Patch.LoadPatchResult;
 import org.bonitasoft.bonitaupdate.patch.PatchDecoJson;
 import org.bonitasoft.bonitaupdate.patch.PatchDirectory.ListPatches;
+import org.bonitasoft.bonitaupdate.patch.PatchInstall;
 import org.bonitasoft.bonitaupdate.patch.PatchInstall.ResultInstall;
 import org.bonitasoft.bonitaupdate.server.BonitaClientTangoServer;
-import org.bonitasoft.bonitaupdate.patch.PatchInstall;
 import org.bonitasoft.bonitaupdate.toolbox.TypesCast;
 import org.bonitasoft.engine.session.APISession;
 import org.bonitasoft.log.event.BEvent;
@@ -31,38 +32,34 @@ public class BonitaUpdateAPI {
 
     public static class ParameterUpdate {
 
-        public String serverUrl;
         public File bonitaRootDirectory;
         public String bonitaVersion;
-
+        public APISession apiSession;
+        
         public List<String> listPatchesName;
 
-        public String serverProtocol;
-        public String serverName;
-        public int serverPort;
-        public String serverUserName;
-        public String serverPassword;
-        public String userName;
+        ParametersConfiguration parametersConfiguration;
 
-        public static ParameterUpdate getInstanceFromJson(String jsonSt, APISession apiSession) {
+        @SuppressWarnings("unchecked")
+        public static ParameterUpdate getInstanceFromJson(String jsonSt, APISession apiSession, File bonitaRootDirectory ) {
             ParameterUpdate parameter = new ParameterUpdate();
-            if (jsonSt == null)
+            parameter.apiSession = apiSession;
+
+            parameter.bonitaRootDirectory = bonitaRootDirectory;
+            
+            if (jsonSt == null) {
+                parameter.parametersConfiguration = ParametersConfiguration.getDefault();
+                parameter.parametersConfiguration.localBonitaVersion = parameter.detectBonitaVersion();
                 return parameter;
-
+            }
             try {
-                Map param = (Map<String, Object>) JSONValue.parse(jsonSt);
-                parameter.listPatchesName = (List<String>) TypesCast.getList(param.get(BonitaPatchJson.CST_JSON_PATCHES), new ArrayList());
+                Map<String, Object> param = (Map<String, Object>) JSONValue.parse(jsonSt);
+                parameter.listPatchesName = (List<String>) TypesCast.getList(param.get(BonitaPatchJson.CST_JSON_PATCHES), new ArrayList<>());
+                parameter.bonitaVersion = TypesCast.getString( param.get(BonitaPatchJson.CST_JSON_BONITAVERSION), null);
 
-                Map paramServer = (Map<String, Object>) param.get(BonitaPatchJson.CST_JSON_PARAM);
-
-                parameter.serverUrl = TypesCast.getString(paramServer.get(BonitaPatchJson.CST_JSON_SERVERURL), null);
-
-                parameter.serverProtocol = TypesCast.getString(paramServer.get(BonitaPatchJson.CST_JSON_SERVERPROTOCOL), null);
-                parameter.serverName = TypesCast.getString(paramServer.get(BonitaPatchJson.CST_JSON_SERVERNAME), null);
-                parameter.serverPort = TypesCast.getInteger(paramServer.get(BonitaPatchJson.CST_JSON_SERVERPORT), 8080);
-                parameter.serverUserName = TypesCast.getString(paramServer.get(BonitaPatchJson.CST_JSON_SERVERUSERNAME), null);
-                parameter.serverPassword = TypesCast.getString(paramServer.get(BonitaPatchJson.CST_JSON_SERVERPASSWORD), null);
-                parameter.userName = apiSession.getUserName();
+                // Map paramServer = (Map<String, Object>) param.get(BonitaPatchJson.CST_JSON_PARAM);
+                Map<String, Object> paramTango = (Map<String, Object>) param.get(BonitaPatchJson.CST_JSON_PARAMETERTANGO);
+                parameter.parametersConfiguration = ParametersConfiguration.getInstanceFromJson(paramTango);
 
             } catch (Exception e) {
                 StringWriter sw = new StringWriter();
@@ -82,7 +79,12 @@ public class BonitaUpdateAPI {
         }
 
         public PatchConfiguration getPatchConfiguration() {
-            return new PatchConfiguration(bonitaRootDirectory, bonitaVersion, serverProtocol, serverName, serverPort, serverUserName, serverPassword, userName);
+            return new PatchConfiguration(bonitaRootDirectory, bonitaVersion, apiSession, parametersConfiguration);
+        }
+        
+        public String detectBonitaVersion() {
+            this.bonitaVersion = "7.8.4";
+            return this.bonitaVersion;
         }
     }
 
@@ -94,11 +96,10 @@ public class BonitaUpdateAPI {
         listEvents.addAll(patchConfiguration.validateConfiguration());
 
         Map<String, Object> result = new HashMap<>();
-        result.put(BonitaPatchJson.CST_JSON_SERVERPROTOCOL, "http");
-        result.put(BonitaPatchJson.CST_JSON_SERVERNAME, "localhost");
-        result.put(BonitaPatchJson.CST_JSON_SERVERPORT, 8080);
-        result.put(BonitaPatchJson.CST_JSON_SERVERUSERNAME, "helen.kelly");
-        result.put(BonitaPatchJson.CST_JSON_SERVERPASSWORD, "bpm");
+
+        // next : read this information from BonitaProperties
+        result.put(BonitaPatchJson.CST_JSON_PARAMETERTANGO, ParametersConfiguration.getDefault().toMap());
+
         ResultRefresh resultRefresh = getListPatches(patchConfiguration);
         listEvents.addAll(resultRefresh.listEvents);
 
@@ -129,7 +130,6 @@ public class BonitaUpdateAPI {
         return result;
     }
 
-    
     /* -------------------------------------------------------------------- */
     /*                                                                      */
     /* Server refesh/download */
@@ -143,7 +143,11 @@ public class BonitaUpdateAPI {
     public Map<String, Object> refreshServer(ParameterUpdate parameter) {
         Map<String, Object> result = new HashMap<>();
 
+        if (parameter.bonitaVersion ==null)
+            parameter.detectBonitaVersion();
         PatchConfiguration patchConfiguration = parameter.getPatchConfiguration();
+        // we ask the server to get patches for my Local version.
+        patchConfiguration.parametersConfiguration.localBonitaVersion = parameter.bonitaVersion;
 
         // Contact the server
         BonitaClientTangoServer bonitaPatchServer = new BonitaClientTangoServer(patchConfiguration);
@@ -153,9 +157,8 @@ public class BonitaUpdateAPI {
         result.put(BonitaPatchJson.CST_JSON_LOCALPATCHED, PatchDecoJson.toJson(listPatchServer.listPatch));
 
         return result;
-
     }
-    
+
     public Map<String, Object> download(ParameterUpdate parameter) {
         Map<String, Object> result = new HashMap<>();
         return result;
@@ -198,8 +201,8 @@ public class BonitaUpdateAPI {
                 listEvents.addAll(resultInstall.listEvents);
                 statusPatch.put(BonitaPatchJson.CST_JSON_PATCHSTATUS, resultInstall.statusPatch.toString());
 
-                if (resultInstall.listEvents.size()>0)
-                statusPatch.put(BonitaPatchJson.CST_JSON_STATUSLISTEVENTS, BEventFactory.getSyntheticHtml(resultInstall.listEvents));
+                if (resultInstall.listEvents.size() > 0)
+                    statusPatch.put(BonitaPatchJson.CST_JSON_STATUSLISTEVENTS, BEventFactory.getSyntheticHtml(resultInstall.listEvents));
                 statusPatch.put(BonitaPatchJson.CST_JSON_STATUSOPERATION, BEventFactory.isError(listEvents) ? CST_STATUS_FAILED : CST_STATUS_SUCCESS);
             }
         }
@@ -233,7 +236,7 @@ public class BonitaUpdateAPI {
                 ResultInstall resultInstall = patchInstall.unInstallPatch(patchConfiguration, loadedPatch.patch);
                 listEvents.addAll(resultInstall.listEvents);
                 statusPatch.put(BonitaPatchJson.CST_JSON_PATCHSTATUS, resultInstall.statusPatch.toString());
-                if (resultInstall.listEvents.size()>0)
+                if (resultInstall.listEvents.size() > 0)
                     statusPatch.put(BonitaPatchJson.CST_JSON_STATUSLISTEVENTS, BEventFactory.getSyntheticHtml(resultInstall.listEvents));
                 statusPatch.put(BonitaPatchJson.CST_JSON_STATUSOPERATION, BEventFactory.isError(listEvents) ? CST_STATUS_FAILED : CST_STATUS_SUCCESS);
             }
@@ -245,10 +248,9 @@ public class BonitaUpdateAPI {
         return result;
     }
 
-  
     /* -------------------------------------------------------------------- */
     /*                                                                      */
-    /* PATCH SERVER (TANGO) : this method is on the patch server                    */
+    /* PATCH SERVER (TANGO) : this method is on the patch server */
     /*                                                                      */
     /* -------------------------------------------------------------------- */
 
@@ -263,16 +265,18 @@ public class BonitaUpdateAPI {
         List<BEvent> listEvents = new ArrayList<>();
         PatchConfiguration patchConfiguration = parameter.getPatchConfiguration();
 
-        BonitaLocalServer bonitaClientPatchServer = new BonitaTangoServer(patchConfiguration);
+        BonitaTangoServer bonitaClientPatchServer = new BonitaTangoServer(patchConfiguration);
 
-        result.put("listevent", BEventFactory.getHtml(listEvents));
-        result.put("status", BEventFactory.isError(listEvents) ? CST_STATUS_FAILED : CST_STATUS_SUCCESS);
+        
+        ListPatches listPatchServer = bonitaClientPatchServer.getAvailablesPatch();
+        result.put(BonitaPatchJson.CST_JSON_LISTEVENTS, BEventFactory.getHtml(listPatchServer.listEvents));
+        result.put(BonitaPatchJson.CST_JSON_LOCALPATCHED, PatchDecoJson.toJson(listPatchServer.listPatch));
+        result.put( BonitaPatchJson.CST_JSON_STATUSOPERATION, BEventFactory.isError(listEvents) ? CST_STATUS_FAILED : CST_STATUS_SUCCESS);
 
         return result;
 
     }
-    
-    
+
     /* -------------------------------------------------------------------- */
     /*                                                                      */
     /* Internal method */

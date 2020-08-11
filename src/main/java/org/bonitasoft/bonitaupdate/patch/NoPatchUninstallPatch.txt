@@ -1,0 +1,6 @@
+package com.imagina.noon.activities.patch;
+
+public class NoPatchUninstallPatch
+{
+
+}

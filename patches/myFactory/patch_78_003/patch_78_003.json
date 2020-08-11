@@ -1,0 +1,7 @@
+{ 
+	"name" : "patch_78_002",
+	"description" : "The Second patch, upgrade BonitaEvent to 1.9.0",
+	"daterelease":"July 23,2020",
+	"filestodelete": ["lib/bonita-event-1.8.0"],
+	"installationpolicy" : "STRICT"
+}

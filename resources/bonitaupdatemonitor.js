@@ -59,7 +59,7 @@ appCommand.controller('BonitaUpdateController',
 	// -----------------------------------------------------------------------------------------
 	//  										Refresh
 	// -----------------------------------------------------------------------------------------
-	
+	this.tango = {};
 	this.listLocalPatches =[];
 	this.listServerPatches= [];
 	this.param = {
@@ -93,6 +93,7 @@ appCommand.controller('BonitaUpdateController',
 					self.localPatches 			= jsonResult.localPatches;
 					self.serverPatches 			= jsonResult.serverPatches;
 					self.listevents				= jsonResult.listevents;
+					self.tango					= jsonResult.tango;
 					self.inprogress=false;
 						
 				})
@@ -114,7 +115,7 @@ appCommand.controller('BonitaUpdateController',
 		// 7.6 : the server force a cache on all URL, so to bypass the cache, then create a different URL
 		var d = new Date();
 			
-		var paramUrl = {  "param":this.param};
+		var paramUrl = {  "tango":this.tango};
 		
 		var json = encodeURIComponent(angular.toJson(paramUrl, true));
 	
@@ -163,45 +164,45 @@ appCommand.controller('BonitaUpdateController',
 		var json = encodeURIComponent(angular.toJson(paramUrl,true));
 		var d = new Date();
 		$http.get( '?page=custompage_bonitaupdate&action=download&paramjson='+json+'&t='+d.getTime() )
-				.success( function ( jsonResult, statusHttp, headers, config ) {
-					
-					// connection is lost ?
-					if (statusHttp==401 || typeof jsonResult === 'string') {
-						console.log("Redirected to the login page !");
-						window.location.reload();
-					}
-					console.log("history",jsonResult);
-					
-					self.listevents				= jsonResult.listevents;
-					if (jsonResult.listpatchesoperationstatus != null) {
-						// search each patch in the list and update it
-						// console.log("Start listpatchesoperationstatus listPatchSelected="+angular.toJson(self.listPatchesSelected));
-						for (var i in self.listPatchesDownload) {
-							// console.log("Search Local["+self.listPatchesSelected[ i ].name+" in ="+angular.toJson(jsonResult.listpatchesoperationstatus));
-							for (var j in jsonResult.listpatchesoperationstatus) {
-								
-								// console.log("Comapre ["+self.listPatchesSelected[ i ].name+"] with ["+jsonResult.listpatchesoperationstatus[ j ].name+"]");
-								if (self.listPatchesDownload[ i ].name === jsonResult.listpatchesoperationstatus[ j ].name) {
-									// console.log("MATCH");
-									self.listPatchesDownload[ i ].status			= jsonResult.listpatchesoperationstatus[ j ].status;
-									self.listPatchesDownload[ i ].statusoperation 	= jsonResult.listpatchesoperationstatus[ j ].statusoperation;
-									self.listPatchesDownload[ i ].statuslistevents 	= jsonResult.listpatchesoperationstatus[ j ].statuslistevents;
-								}
+			.success( function ( jsonResult, statusHttp, headers, config ) {
+				
+				// connection is lost ?
+				if (statusHttp==401 || typeof jsonResult === 'string') {
+					console.log("Redirected to the login page !");
+					window.location.reload();
+				}
+				console.log("history",jsonResult);
+				
+				self.listevents				= jsonResult.listevents;
+				if (jsonResult.listpatchesoperationstatus != null) {
+					// search each patch in the list and update it
+					// console.log("Start listpatchesoperationstatus listPatchSelected="+angular.toJson(self.listPatchesSelected));
+					for (var i in self.listPatchesDownload) {
+						// console.log("Search Local["+self.listPatchesSelected[ i ].name+" in ="+angular.toJson(jsonResult.listpatchesoperationstatus));
+						for (var j in jsonResult.listpatchesoperationstatus) {
+							
+							// console.log("Comapre ["+self.listPatchesSelected[ i ].name+"] with ["+jsonResult.listpatchesoperationstatus[ j ].name+"]");
+							if (self.listPatchesDownload[ i ].name === jsonResult.listpatchesoperationstatus[ j ].name) {
+								// console.log("MATCH");
+								self.listPatchesDownload[ i ].status			= jsonResult.listpatchesoperationstatus[ j ].status;
+								self.listPatchesDownload[ i ].statusoperation 	= jsonResult.listpatchesoperationstatus[ j ].statusoperation;
+								self.listPatchesDownload[ i ].statuslistevents 	= jsonResult.listpatchesoperationstatus[ j ].statuslistevents;
 							}
 						}
 					}
+				}
+				
+				self.inprogress=false;
+				// refresh the local list now
+				self.refresh('refresh');
 					
-					self.inprogress=false;
-					// refresh the local list now
-					self.refresh('refresh');
-						
-				})
-				.error( function() {
-					self.inprogress=false;
-					});
+			})
+			.error( function() {
+				self.inprogress=false;
+				});
 				
 		
-	}
+	
 	}
 
 	

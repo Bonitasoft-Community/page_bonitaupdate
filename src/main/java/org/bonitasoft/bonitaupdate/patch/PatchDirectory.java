@@ -51,9 +51,35 @@ public class PatchDirectory {
 
         public List<Patch> listPatch = new ArrayList<>();
         public List<BEvent> listEvents = new ArrayList<>();
+        /**
+         * Add only the non already patch
+         * @param listPatches
+         */
         public void add(ListPatches listPatches ) {
-            this.listPatch.addAll( listPatches.listPatch);
+            for (Patch patch : listPatches.listPatch)
+            {
+                // uniq based on the patch name
+                if (! this.isContains(patch.getName()))
+                    this.listPatch.add( patch );
+            }
+            
             this.listEvents.addAll( listPatches.listEvents);
+        }
+        
+        public boolean isContains(String patchName ) 
+        {
+            for (Patch patch:  listPatch) {
+                if (patch.getName().equals(patchName))
+                    return true;
+            }
+            return false;
+        }
+        public String toString() {
+            StringBuilder result = new StringBuilder();
+            for (Patch patch : listPatch) {
+                result.append(patch.toString()+";");                
+            }
+            return result.toString();
         }
     }
 
@@ -74,7 +100,11 @@ public class PatchDirectory {
     public ListPatches getListPatches() {
 
         ListPatches listPatch = new ListPatches();
-
+        if (! patchSourcePath.exists() || ! patchSourcePath.isDirectory())
+        {
+            listPatch.listEvents.add(eventCantAccessFolder);
+            return listPatch;
+        }
         try {
 
             for (final File f : patchSourcePath.listFiles()) {

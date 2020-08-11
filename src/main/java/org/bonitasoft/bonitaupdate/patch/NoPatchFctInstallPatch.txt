@@ -1,0 +1,75 @@
+/**
+ * 
+ */
+package com.imagina.noon.activities.patch;
+
+import com.imagina.noon.engine.NoonContext;
+import com.imagina.noon.engine.NoonTankVariable;
+import com.imagina.noon.toolbox.configurator.core.ConfcoreComponent;
+import com.imagina.noon.toolbox.configurator.core.ConfcoreDeclareFunctionVariable;
+import com.imagina.noon.toolbox.configurator.core.ConfcoreDescription;
+import com.imagina.noon.toolbox.configurator.core.ConfcoreIntFunction;
+import com.imagina.packbox.database.DatabaseConnection;
+import com.imagina.packbox.logger.LoggerMessage;
+
+/**
+ * @author pym
+ *
+ */
+public class NoPatchFctInstallPatch implements ConfcoreIntFunction
+{
+
+  /* (non-Javadoc)
+   * @see com.imagina.noon.toolbox.configurator.core.ConfcoreIntFunction#getInputVariablesDescription()
+   */
+  @Override
+  public ConfcoreDeclareFunctionVariable[] getInputVariablesDescription()
+  {
+    return new ConfcoreDeclareFunctionVariable[ 0 ];
+  }
+
+  /* (non-Javadoc)
+   * @see com.imagina.noon.toolbox.configurator.core.ConfcoreIntFunction#getOutputVariablesDescription()
+   */
+  @Override
+  public ConfcoreDeclareFunctionVariable[] getOutputVariablesDescription()
+  {
+    return new ConfcoreDeclareFunctionVariable[ 0 ];
+  }
+
+  /* (non-Javadoc)
+   * @see com.imagina.noon.toolbox.configurator.core.ConfcoreIntFunction#execute(com.imagina.noon.toolbox.configurator.core.ConfcoreDescription, com.imagina.noon.toolbox.configurator.core.ConfcoreComponent, com.imagina.noon.engine.NoonTankVariable, com.imagina.noon.engine.NoonContext, com.imagina.packbox.database.DatabaseConnection, com.imagina.packbox.logger.LoggerMessage)
+   */
+  @Override
+  public void execute(ConfcoreDescription confDescription,
+                      ConfcoreComponent component,
+                      NoonTankVariable tank,
+                      NoonContext ctx,
+                      DatabaseConnection databaseConnection,
+                      LoggerMessage theLog)
+  {
+    String versionName = confDescription.getVariableValueString(NoPatchDictionary.cstConfVersion, theLog);
+    String patchSourcePath = confDescription.getVariableValueString(NoPatchDictionary.cstConfPatchSourcePath, theLog);
+    String patchSavePath = confDescription.getVariableValueString(NoPatchDictionary.cstConfPatchSavePath, theLog);
+    //String urlMaster = confDescription.getVariableValueString(NoPatchDictionary.cstConfPatchUrlMaster, theLog);
+    //String urlProxy = confDescription.getVariableValueString(NoPatchDictionary.cstConfPatchUrlProxy, theLog);
+    //String urlPort = confDescription.getVariableValueString(NoPatchDictionary.cstConfPatchUrlPort, theLog);
+
+    //String urlUserName = confDescription.getVariableValueString(NoPatchDictionary.cstConfPatchUrlProxyUserName, theLog);
+    //String urlPassword = confDescription.getVariableValueString(NoPatchDictionary.cstConfPatchUrlProxyPassword, theLog);
+
+    String rootPath = ctx.getConfig().getInstancePath();
+    NoPatchInstallPatch.ResultInstall result = NoPatchInstallPatch.installPatch(versionName,
+                                                                                null,
+                                                                                patchSourcePath,
+                                                                                patchSavePath,
+                                                                                rootPath,
+                                                                                ctx,
+                                                                                theLog,
+                                                                                this);
+
+    confDescription.setVariableValue(NoPatchDictionary.cstConfPatchInstallDetail, result.mDetail, theLog);
+    return;
+  }
+
+}

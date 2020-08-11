@@ -1,0 +1,25 @@
+{ 
+	"name" : "patch_78_002",
+	"description" : "The Second patch, upgrade BonitaEvent to 1.9.0",
+	"daterelease":"July 23,2020",
+	"filestodelete": ["lib/bonita-event-1.8.0"],
+	"installationpolicy" : "STRICT",
+	"setup" : [
+		{ 
+			"file" : "platform_engine/bonita-platform-community-custom.properties",
+			"propertie" : "bonita.platform.synchro.initialcapacity",
+			"value" : "70"
+		},
+		{ 	
+			"file" : "tenants/*/tenant_portal/console-config.properties",
+			"propertie" : "custom.page.debug",
+			"value" : "true"
+		},
+		{ 	
+			"file" : "tenants/*/tenant_portal/console-config.properties",
+			"propertie" : "custom.page.debug",
+			"valueoff" : true
+		}
+	]
+	
+}

@@ -1,0 +1,604 @@
+/* ==================================================
+ * Noon/patch : Manage patch
+ * ==================================================
+ *
+ * Creation 2006, by Imagina International
+ *
+ * This library is owned by Imagina International. You can't
+ * redistribute it and/or modify it without the permission of
+ * Imagina international
+ *
+ * -----------------------
+ * NoPatch
+ * -----------------------
+ */
+
+package com.imagina.noon.activities.patch;
+
+//-----------------------------------------------------------------------------
+/**
+ *                Imagina International
+ *
+ *
+ *  <H3> Description </H3>
+ * Different toolbox function
+ *  
+ *
+ *  <H3> Use </H3>
+ *  Noon activity
+ *
+ *  <H3> Implementation </H3>
+ *  any information on the implementation, if necessary.
+ *
+ *  <H3> Change </H3>
+ *
+ *  and its historic, if necessary.
+ *
+ * @author     Imagina International
+ * @created    15 juily 2003
+ * @version    1.0
+ */
+
+//-----------------------------------------------------------------------------
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.Text;
+import org.xml.sax.SAXException;
+
+import com.imagina.noon.activities.toolbox.NoToolboxZip;
+import com.imagina.packbox.file.FileTool;
+import com.imagina.packbox.logger.LoggerLevel;
+import com.imagina.packbox.logger.LoggerMessage;
+import com.imagina.packbox.xml.XmlToolbox;
+import com.sun.org.apache.xerces.internal.dom.DocumentImpl;
+import com.sun.org.apache.xml.internal.serialize.OutputFormat;
+import com.sun.org.apache.xml.internal.serialize.XMLSerializer;
+
+//-------------------------------------------------
+public class NoPatchToolbox
+{
+  public static final SimpleDateFormat CST_DATE_FORMAT                     = new SimpleDateFormat("yyyy-MM-dd-HH-mm");
+  public static final String           CST_EXPLANATION                     = "explanation";
+  public static final String           CST_PATH                            = "path";
+  public static final String           CST_FILETODELETE                    = "filetodelete";
+  public static final String           CST_FILESTODELETE                   = "filestodelete";
+
+  /* ------------------------------------------------------------------------ */
+  /*                                                                          */
+  /*                Explanation operation                                     */
+  /*                                                                          */
+  /*                                                                          */
+  /* ------------------------------------------------------------------------ */
+
+  /**
+   * return the explanation, an hashmap of string, from the zip file
+   * @param completeFileName
+   * @param theLog
+   * @param caller
+   * @return
+   */
+  public static String                 cstExplanationAttribute_AUTHOR      = "AUTHOR";
+
+  public static String                 cstExplanationAttribute_EXPLANATION = "EXPLANATION";
+
+  /**
+   * get the patch description
+   * @param name
+   * @param completeFileName
+   * @param theLog
+   * @param caller
+   * @return
+   */
+  public static HashMap<String, String> getPatchDescription(String name,
+                                                            String completeFileName,
+                                                            LoggerMessage theLog,
+                                                            Object caller)
+  {
+    FileInputStream patchFile = null;
+    HashMap<String, String> explanation = new HashMap<String, String>();
+    try
+    {
+      if (name.endsWith(".zip"))
+        name = name.substring(0, name.length() - 4);
+      // retrieve in the content the XML file with the same name
+      patchFile = new FileInputStream(completeFileName);
+
+      ZipInputStream inStream = new ZipInputStream(patchFile);
+      ZipEntry zipEntry = null;
+      while ((zipEntry = inStream.getNextEntry()) != null)
+      {
+        if (zipEntry.getName().endsWith(name + ".xml"))
+        {
+          // this is the XML file
+          long size = zipEntry.getSize();
+          if (size == -1)
+          {
+            // incorrect xml file
+            theLog.log(caller, LoggerLevel.Info, "Incorrect XML file size=-1 [" + zipEntry.getName() + "]");
+            return null;
+          }
+          ByteArrayOutputStream bufferStream = new ByteArrayOutputStream();
+          byte[] buffer = new byte[ 5000 ];
+
+          int sizeReaded = 0;
+          while (size > sizeReaded)
+          {
+            int bufToRead = (int) (size - sizeReaded);
+            if (bufToRead > buffer.length)
+              bufToRead = buffer.length;
+            inStream.read(buffer, 0, bufToRead);
+            bufferStream.write(buffer, 0, bufToRead);
+            sizeReaded += bufToRead;
+          }
+          ByteArrayInputStream bufferInputStream = new ByteArrayInputStream(bufferStream.toByteArray());
+
+          // ok, no parse the buffer to get attributes
+          DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+          DocumentBuilder builder = factory.newDocumentBuilder();
+          Document xmlDocument = builder.parse(bufferInputStream);
+
+          Node nChild = xmlDocument.getDocumentElement();
+          nChild = XmlToolbox.getNextChildElement(nChild.getFirstChild());
+
+          while (nChild != null)
+          {
+            String nameAttr = nChild.getNodeName();
+            String valueAttr = XmlToolbox.getNodeValue(nChild, theLog);
+            explanation.put(nameAttr.toUpperCase(), valueAttr);
+            nChild = XmlToolbox.getNextChildElement(nChild.getNextSibling());
+          }
+        }
+      }
+
+      return explanation;
+    }
+    catch (Exception e)
+    {
+
+      theLog.log(caller, "During getListEntry in patchFile[" + completeFileName + "]", e);
+
+      return explanation;
+    }
+    finally
+    {
+      if (patchFile != null)
+        try
+        {
+          patchFile.close();
+        }
+        catch (Exception e2)
+        {}
+      ;
+
+    }
+  }
+
+  /**
+   * from the different parameters, create the XML document and return it as a ByteArrayOutputstream
+   * @param versionName
+   * @param name
+   * @param author
+   * @param filesToDelete 
+   * @param explanation
+   * @param theLog
+   * @return
+   */
+  public static ByteArrayOutputStream createPatchDescription(String versionName,
+                                                             String name,
+                                                             String author,
+                                                             List<String> filesToDelete,
+                                                             String explanation,
+                                                             boolean reboot,
+                                                             String tests,
+                                                             LoggerMessage theLog,
+                                                             Object caller)
+  {
+    try
+    {
+      // create a new Document
+      Document xmlDocument = new DocumentImpl();
+      // add the reference to the dtd
+      // DocumentType xmlDocumentType = ((DocumentImpl)xmlDocument).createDocumentType(fileName, cstDtdId, cstDtdFileName);
+      // xmlDocument = new DocumentImpl(xmlDocumentType);
+      // check that the rootNode has the rigth name
+      Element rootNode = xmlDocument.createElement("patch");
+      xmlDocument.appendChild(rootNode);
+
+      Element authorNode = xmlDocument.createElement("author");
+      rootNode.appendChild(authorNode);
+      Text authorText = xmlDocument.createTextNode(author);
+      authorNode.appendChild(authorText);
+
+      Element explanationNode = xmlDocument.createElement(CST_EXPLANATION);
+      rootNode.appendChild(explanationNode);
+
+      Element testsNode = xmlDocument.createElement("tests");
+      rootNode.appendChild(testsNode);
+
+      Element rebootNode = xmlDocument.createElement("reboot");
+      rootNode.appendChild(rebootNode);
+
+      Element filesToDeleteNode = xmlDocument.createElement(CST_FILESTODELETE);
+      rootNode.appendChild(filesToDeleteNode);
+
+      for (String fileToDelete : filesToDelete)
+      {
+        Element fileToDeleteNode = xmlDocument.createElement(CST_FILETODELETE);
+        fileToDeleteNode.setAttribute(CST_PATH, fileToDelete);
+        filesToDeleteNode.appendChild(fileToDeleteNode);
+      }
+
+      Text explanationText = xmlDocument.createTextNode(explanation);
+      explanationNode.appendChild(explanationText);
+
+      // then serialize the xml document to the byteArray
+      ByteArrayOutputStream byteOutput = new ByteArrayOutputStream();
+      OutputFormat of = new OutputFormat("XML", "UTF-8", true);
+      of.setLineWidth(0);
+      // create the outputStream from the output file
+      // create the serializer
+      XMLSerializer serializer = new XMLSerializer(byteOutput, of);
+
+      // serialize the DOM document
+      serializer.serialize(xmlDocument);
+      return byteOutput;
+    }
+    catch (Exception e)
+    {
+      theLog.log(caller, "error during xml create", e);
+      return null;
+    }
+  }
+
+  /* ------------------------------------------------------------------------ */
+  /*                                                                          */
+  /*                Patch operation                                           */
+  /*                                                                          */
+  /*                                                                          */
+  /* ------------------------------------------------------------------------ */
+
+  /**
+   * from a list of file, create the zip file.
+   * @param sourcePath
+   * @param listOfFile
+   * @param completeZipFileName
+   * @param theLog
+   * @param caller
+   * @return
+   */
+  public static boolean createZipFile(String sourcePath,
+                                      ArrayList<NoToolboxZip.ZipItem> listOfContent,
+                                      String completeZipFileName,
+                                      boolean fileNotFoundAccepted,
+                                      LoggerMessage theLog,
+                                      Object caller)
+  {
+    if (listOfContent.size() == 0)
+      return true;
+    try
+    {
+      // create the archive file
+      File file = new File(completeZipFileName);
+      FileTool.checkAndCreateDir(file.getParentFile().getPath(), caller, theLog);
+
+      FileOutputStream theZipOutput = new FileOutputStream(completeZipFileName);
+
+      ZipOutputStream outZipStream = new ZipOutputStream(theZipOutput);
+      boolean finalStatus = true;
+      boolean isNewFiles = true;
+      for (NoToolboxZip.ZipItem zipItem : listOfContent)
+      {
+        String fileName = zipItem.mFileName;
+        String completeFileName = sourcePath + fileName;
+        try
+        {
+          InputStream in = null;
+          // if the listOfInputStream has a inputStream for this number, use it, else read the file
+          in = zipItem.mInput;
+          if (in == null)
+          {
+            in = new FileInputStream(completeFileName);
+          }
+          boolean status = NoToolboxZip.writeEntry(outZipStream, fileName, in, theLog, caller);
+          isNewFiles = false;
+          theLog.log(caller, LoggerLevel.Info, "SaveToZip[" + fileName + "] status[" + status + "]");
+          if (!status)
+            finalStatus = status;
+        }
+        catch (FileNotFoundException f)
+        {
+          if (!fileNotFoundAccepted)
+            throw f;
+          theLog.log(caller, LoggerLevel.Info, "File[" + fileName + "] not found");
+        }
+      }
+      try
+      {
+        outZipStream.close();
+        theZipOutput.close();
+      }
+      catch (ZipException z)
+      {
+        if (isNewFiles)
+        {
+          finalStatus = true;
+          theZipOutput.close();
+        }
+        else
+          finalStatus = false;
+      }
+
+      return finalStatus;
+    }
+    catch (Exception e)
+    {
+      theLog.log(caller, "duringSaveZipFile", e);
+      return false;
+    }
+  }
+
+  /**
+   * install a patch : unzip and install all files
+   * @param list 
+   */
+  public static String installPatch(String patchName,
+                                    String completeZipFileName,
+                                    String rootPath,
+                                    List<String> filesToDelete,
+                                    LoggerMessage theLog,
+                                    Object caller)
+  {
+    if (filesToDelete == null)
+    {
+      filesToDelete = new ArrayList<String>();
+    }
+
+    for (String fileToDelete : filesToDelete)
+    {
+      String completeFileName = rootPath + fileToDelete;
+      File file = new File(completeFileName);
+      if (file.exists() && file.isFile())
+      {
+        theLog.log(caller, LoggerLevel.Warning, "try to delete file [" + completeFileName + "]");
+        try
+        {
+          boolean fileDeleted = file.delete();
+          if (fileDeleted)
+          {
+            theLog.log(caller, LoggerLevel.Warning, "file [" + completeFileName + "] as been deleted");
+          }
+        }
+        catch (Exception e)
+        {}
+      }
+    }
+
+    String fileName = "";
+    try
+    {
+      // get the content of patchfile
+      FileInputStream patchFile = new FileInputStream(completeZipFileName);
+
+      ZipInputStream inStream = new ZipInputStream(patchFile);
+      ZipEntry zipEntry = null;
+      while ((zipEntry = inStream.getNextEntry()) != null)
+      {
+        if (zipEntry.getName().equals(patchName))
+        {
+          continue;
+        }
+
+        // long size = zipEntry.getSize();
+
+        // check then create the directory, which may new
+        fileName = NoToolboxZip.getFileName(zipEntry);
+
+        File file = new File(rootPath + File.separator + fileName);
+        FileTool.checkAndCreateDir(file.getParentFile().getPath(), caller, theLog);
+
+        FileOutputStream fileExtracted = new FileOutputStream(rootPath + File.separator + fileName);
+
+        BufferedOutputStream fo = new BufferedOutputStream(fileExtracted);
+        for (int c = inStream.read(); c != -1; c = inStream.read())
+          fo.write(c);
+        fo.close();
+
+        fileExtracted.close();
+        theLog.log(caller, LoggerLevel.Info, "Unzip [" + fileName + "]");
+      }
+      inStream.close();
+      patchFile.close();
+      return null;
+    }
+    catch (Exception e)
+    {
+      theLog.log(caller, "During getListEntry in patchFile", e);
+      return fileName + " " + e.toString();
+    }
+
+  }
+
+  public static NoPatch getPatchDescription(String path,
+                                            String patchName,
+                                            LoggerMessage theLog)
+  {
+    NoPatch result = new NoPatch();
+    ZipFile zipFile = null;
+    try
+    {
+      zipFile = new ZipFile(path + File.separator + patchName);
+
+      Enumeration<? extends ZipEntry> en = zipFile.entries();
+      while (en.hasMoreElements())
+      {
+        ZipEntry zipEntry = en.nextElement();
+        String fileName = NoToolboxZip.getFileName(zipEntry);
+        File xmlFile = new File(fileName);
+
+        if (xmlFile.getName().equals(patchName.replace(".zip", ".xml")))
+        {
+          DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+
+          DocumentBuilder builder;
+
+          builder = factory.newDocumentBuilder();
+
+          Document xmlDocument = builder.parse(zipFile.getInputStream(zipEntry));
+          Node node = xmlDocument.getDocumentElement().getFirstChild();
+          while (node != null)
+          {
+            if (CST_EXPLANATION.equals(node.getNodeName()))
+            {
+              Node explanation = node.getFirstChild();
+              if (explanation != null)
+              {
+                result.setExplanation(explanation.getNodeValue());
+              }
+            }
+
+            if (CST_FILESTODELETE.equals(node.getNodeName()))
+            {
+              Node fileToDelete = node.getFirstChild();
+
+              while (fileToDelete != null)
+              {
+                if (CST_FILETODELETE.equals(fileToDelete.getNodeName()))
+                {
+                  result.addFileToDelete(NoToolboxZip.getFileName(XmlToolbox.getXmlAttribute(fileToDelete, CST_PATH, theLog)));
+                }
+                fileToDelete = fileToDelete.getNextSibling();
+              }
+            }
+
+            node = node.getNextSibling();
+          }
+
+          return result;
+
+        }
+      }
+    }
+    catch (ParserConfigurationException e)
+    {
+      return null;
+    }
+    catch (SAXException e)
+    {
+      return null;
+    }
+    catch (IOException e)
+    {
+      return null;
+    }
+    finally
+    {
+      if (zipFile != null)
+      {
+        try
+        {
+          zipFile.close();
+        }
+        catch (IOException e)
+        {}
+      }
+    }
+
+    return null;
+  }
+
+  public static Date getDatePatch(String patchName)
+  {
+    if (patchName != null && patchName.length() > 12)
+    {
+      String s = patchName.substring(patchName.length() - 16, patchName.length() - 4);
+      if (s.matches("[0-9]*"))
+      {
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmm");
+        try
+        {
+          return formatter.parse(s);
+        }
+        catch (ParseException e)
+        {}
+      }
+    }
+
+    return null;
+  }
+  public static Date getSystemDatePatch(String patchName)
+  {
+    if (patchName != null)
+    {
+      try
+      {
+        File f = new File(patchName);
+        Date s = new Date();
+        s.setTime(f.lastModified());
+        return s;
+      }
+      catch (Exception e)
+      {}
+    }
+
+    return null;
+  }
+
+  public static class NoPatch
+  {
+    private final List<String> mFilesToDelete = new ArrayList<String>();
+    private String             mExplanation;
+
+    public void addFileToDelete(String fileToDelete)
+    {
+      mFilesToDelete.add(fileToDelete);
+    }
+
+    public void setExplanation(String explanation)
+    {
+      mExplanation = explanation;
+    }
+
+    public String getExplanation()
+    {
+      return mExplanation;
+    }
+
+    public boolean removeFileToDelete(String fileToDelete)
+    {
+      return mFilesToDelete.remove(fileToDelete);
+    }
+
+    public List<String> getFilesToDelete()
+    {
+      return Collections.unmodifiableList(mFilesToDelete);
+    }
+  }
+}

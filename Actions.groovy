@@ -86,7 +86,7 @@ import org.bonitasoft.bonitaupdate.page.BonitaUpdateAPI.ParameterUpdate;
 
 public class Actions {
 
-    private static Logger logger= Logger.getLogger("org.bonitasoft.custompage.truckmilk.groovy");
+    private static Logger logger= Logger.getLogger("org.bonitasoft.custompage.bonitaupdate.groovy");
 
 
 
@@ -123,13 +123,12 @@ public class Actions {
             HttpSession httpSession = request.getSession();
             ProcessAPI processAPI = TenantAPIAccessor.getProcessAPI(apiSession);
             IdentityAPI identityAPI = TenantAPIAccessor.getIdentityAPI(apiSession);
-
-            ParameterUpdate parameter = ParameterUpdate.getInstanceFromJson(paramJsonSt, apiSession);
+            
             
             File pageDirectory = pageResourceProvider.getPageDirectory();
             File bonitaServerDirectory= new File( pageResourceProvider.getPageDirectory().getAbsolutePath()+"/../../../../../../");
-            parameter.setBonitaRootDirectory( new File( bonitaServerDirectory.getCanonicalPath()) );
             
+            ParameterUpdate parameter = ParameterUpdate.getInstanceFromJson(paramJsonSt, apiSession,new File( bonitaServerDirectory.getCanonicalPath()) );
             
             BonitaUpdateAPI bonitaUpdateAPI = new BonitaUpdateAPI();
      
@@ -142,7 +141,7 @@ public class Actions {
                 actionAnswer.responseMap = bonitaUpdateAPI.refresh( parameter );
                 
            } else if ("refreshserver".equals(action)) {
-                actionAnswer.responseMap = bonitaUpdateAPI.serverListPatches( parameter );
+                actionAnswer.responseMap = bonitaUpdateAPI.refreshServer( parameter );
                 
            } else if ("download".equals(action)) {
                 actionAnswer.responseMap = bonitaUpdateAPI.download( parameter );

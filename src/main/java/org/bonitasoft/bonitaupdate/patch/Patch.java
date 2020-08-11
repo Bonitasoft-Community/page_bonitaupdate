@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.StringTokenizer;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -31,11 +32,38 @@ public class Patch {
     private static BEvent eventErrorLoadingPatch = new BEvent(Patch.class.getName(), 2, Level.APPLICATIONERROR,
             "incorrect Patch Structure", "An error occures when the patch is parsing", "The description file is not correct.",
             "Check the patch");
-
+    private static BEvent eventErrorPatchInconsistent = new BEvent(Patch.class.getName(), 3, Level.APPLICATIONERROR,
+            "Patch inconsistent", "The patch must respect a structure", "patch is ignored.",
+            "Check the patch");
+    
+    
+    private static final String CST_FILENAME_PATCHDESCRIPTION= "patch_description.json";
+    
     public enum STATUS { INSTALLED, DOWNLOADED, SERVER };
     public enum INSTALLATIONPOLICY { STRICT, INDEPENDANT };
     
+    /**
+     * THis is the file name. Should finish by .zip - example Patch_7.8.4_100.zip
+     */
+    String fileName;
+    /**
+     * Patch contains a ZIP file with information. Must have the same name as the patch, example Patch_7.8.4_100.zip
+     */
+    String fileNameJson;
+    
+    /**
+     * patch name must be <Patch_<BonitaVersion>_<Sequence>, so this is the BonitaVersion. Example 7.8.4 or 7.8 (patch release or patch version)
+     */
+    String bonitaVersion;
+    
+    /**
+     * name of the patch, reading in the JSON. Name is normalized
+     */
     String patchName;
+    /**
+     * Sequence of the patch, reading in the JSON.
+     */
+    int sequence;
     String description;
     String dateRelease;
     STATUS status;
@@ -63,6 +91,9 @@ public class Patch {
         result.put( BonitaPatchJson.CST_JSON_PATCHNAME, patchName);
         result.put( BonitaPatchJson.CST_JSON_PATCHDESCRIPTION, description);
         result.put( BonitaPatchJson.CST_JSON_PATCHDATEREALEASE, dateRelease);
+        result.put( BonitaPatchJson.CST_JSON_SEQUENCE, sequence);
+        result.put( BonitaPatchJson.CST_JSON_BONITAVERSION, bonitaVersion);
+
         result.put( BonitaPatchJson.CST_JSON_PATCHSTATUS, status.toString());
         result.put( BonitaPatchJson.CST_JSON_PATCHINSTALLATIONPOLICY, installationPolicy.toString());
         result.put( BonitaPatchJson.CST_JSON_PATCHFILESCONTENT, listFilesinPatch);
@@ -80,6 +111,8 @@ public class Patch {
         patchName     = TypesCast.getString( map.get( BonitaPatchJson.CST_JSON_PATCHNAME), null);
         description   = TypesCast.getString( map.get( BonitaPatchJson.CST_JSON_PATCHDESCRIPTION) ,null);
         dateRelease   = TypesCast.getString(map.get( BonitaPatchJson.CST_JSON_PATCHDATEREALEASE),null);
+        sequence      = TypesCast.getInteger(map.get( BonitaPatchJson.CST_JSON_SEQUENCE),-1);
+        bonitaVersion= TypesCast.getString( map.get( BonitaPatchJson.CST_JSON_BONITAVERSION),null);
         installationPolicy = INSTALLATIONPOLICY.STRICT;
         if (map.get( BonitaPatchJson.CST_JSON_PATCHINSTALLATIONPOLICY) !=null)
             installationPolicy   = INSTALLATIONPOLICY.valueOf( TypesCast.getString(map.get( BonitaPatchJson.CST_JSON_PATCHINSTALLATIONPOLICY),INSTALLATIONPOLICY.STRICT.toString()));
@@ -120,10 +153,64 @@ public class Patch {
         this.status = status;
     }
     
+    public String toString() {
+        return patchName+" ["+(status==null ? null : status.toString())+"]";
+    }
+    
+    
     
     /* -------------------------------------------------------------------- */
     /*                                                                      */
-    /* Collect a Path from a file */
+    /* Check the consistency of the patch*/
+    /*                                                                      */
+    /* -------------------------------------------------------------------- */
+
+    public String checkConsistency() {
+        String consistency="";
+        
+        if (fileName != null && ! (fileName.equalsIgnoreCase(patchName+".zip")))
+        {
+            consistency+= "Incorrect filename FileName["+fileName+"] PatchName["+patchName+"];";
+        }
+        if (fileNameJson!=null && ! fileNameJson.equalsIgnoreCase( CST_FILENAME_PATCHDESCRIPTION )&& ! fileNameJson.equalsIgnoreCase( patchName+".json"))
+        {
+            consistency+= "Incorrect JSON filename FileNameJSON["+fileNameJson+"] PatchName["+patchName+"];";
+        }
+        if (patchName!=null)
+        {
+            // decompose : sequence may be 003 for 3
+            StringTokenizer st = new StringTokenizer(patchName, "_");
+            String head = st.hasMoreElements()? st.nextToken(): "";
+            String version = st.hasMoreElements()? st.nextToken(): "";
+            int seq = TypesCast.getInteger(st.hasMoreElements()? st.nextToken(): "-1", -2);
+            if (!head.equalsIgnoreCase("Patch"))
+                consistency+= "Patch name must start by [Patch_];";
+            if (! version.equalsIgnoreCase(bonitaVersion))
+                consistency+= "Version are different Version["+bonitaVersion+"] Version in PatchName["+version+"]";
+            if (seq != sequence)
+                consistency+= "Sequence are different["+sequence+"] Sequence in PatchName["+seq+"]";
+           
+        }
+     
+        if (patchName == null)
+            consistency+="No name;";
+        if (installationPolicy == null)
+            consistency+="No Installation policy;";
+        if (description==null)
+            consistency+="No Description;";
+        if (dateRelease==null)
+            consistency+="No Date release;";
+        if (sequence<=0)
+            consistency+="No Sequence;";
+
+        if (consistency.length()==0)
+            return null;
+        return consistency;
+    }
+    
+    /* -------------------------------------------------------------------- */
+    /*                                                                      */
+    /* Collect a Patch from a file */
     /*                                                                      */
     /* -------------------------------------------------------------------- */
     public static STATUS getStatusFromFolder( FOLDER folder ) 
@@ -144,21 +231,20 @@ public class Patch {
         loadPatchResult.patch = new Patch();
         loadPatchResult.patch.patchFile = filePatch;
         loadPatchResult.patch.status = status;
-        loadPatchResult.patch.patchName = filePatch.getName();
-        if (loadPatchResult.patch.patchName.endsWith(".zip"))
-            loadPatchResult.patch.patchName = loadPatchResult.patch.patchName.substring(0, loadPatchResult.patch.patchName.length() - 4);
-
-         
+        loadPatchResult.patch.fileName= filePatch.getName();
+        String jsonFileExpected="";
+        if (loadPatchResult.patch.fileName != null && loadPatchResult.patch.fileName.length()>4)
+             jsonFileExpected = loadPatchResult.patch.fileName.substring(0, loadPatchResult.patch.fileName.length()-4)+".json";
         
         try (FileInputStream patchFile = new FileInputStream(filePatch)){
             // retrieve in the content the XML file with the same name
-            ;
 
             ZipInputStream inStream = new ZipInputStream(patchFile);
             ZipEntry zipEntry = null;
             while ((zipEntry = inStream.getNextEntry()) != null) {
-                if (zipEntry.getName().endsWith(loadPatchResult.patch.getFileNameDescription())) {
-                    // this is the XML file
+                if (zipEntry.getName().endsWith( jsonFileExpected ) || zipEntry.getName().equalsIgnoreCase(CST_FILENAME_PATCHDESCRIPTION)) {
+                    loadPatchResult.patch.fileNameJson = zipEntry.getName();
+                    // this is the JSON file
                     long size = zipEntry.getSize();
                     if (size == -1) {
                         // incorrect xml file
@@ -191,6 +277,13 @@ public class Patch {
             }
             inStream.close();
 
+            // check the consistence now:
+            //
+            String consistentInformation = loadPatchResult.patch.checkConsistency();
+            if (consistentInformation !=null){
+                loadPatchResult.listEvents.add(new BEvent(eventErrorPatchInconsistent, consistentInformation));
+
+            }
             return loadPatchResult;
         } catch (Exception e) {
             loadPatchResult.listEvents.add(new BEvent(eventErrorLoadingPatch, e, ""));

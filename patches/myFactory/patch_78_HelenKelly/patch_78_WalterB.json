@@ -1,0 +1,7 @@
+{ 
+	"name" : "patch_78_WalterB",
+	"description" : "Patch for Walter Bates only",
+	"daterelease":"July 23,2020",
+	"filestodelete": [],
+	"installationpolicy" : "INDEPENDANT"
+}
