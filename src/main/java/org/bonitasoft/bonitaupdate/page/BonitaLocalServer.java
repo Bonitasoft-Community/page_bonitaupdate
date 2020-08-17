@@ -1,16 +1,11 @@
 package org.bonitasoft.bonitaupdate.page;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.bonitasoft.bonitaupdate.page.PatchConfiguration.FOLDER;
 import org.bonitasoft.bonitaupdate.patch.Patch;
 import org.bonitasoft.bonitaupdate.patch.Patch.LoadPatchResult;
 import org.bonitasoft.bonitaupdate.patch.Patch.STATUS;
 import org.bonitasoft.bonitaupdate.patch.PatchDirectory;
 import org.bonitasoft.bonitaupdate.patch.PatchDirectory.ListPatches;
-import org.bonitasoft.log.event.BEvent;
 
 /**
  * This class contact the Bonita Server
@@ -47,5 +42,6 @@ public class BonitaLocalServer {
         return patchDirectory.getPatchByName( patchName );
         
     }
+    
    
 }
