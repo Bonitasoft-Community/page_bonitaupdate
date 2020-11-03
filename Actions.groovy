@@ -80,7 +80,7 @@ import org.bonitasoft.log.event.BEvent.Level;
 
 
 import org.bonitasoft.bonitaupdate.page.BonitaUpdateAPI;
-import org.bonitasoft.bonitaupdate.page.BonitaUpdateAPI.ParameterUpdate;
+import org.bonitasoft.bonitaupdate.page.ParameterUpdate;
 
 
 
@@ -133,9 +133,9 @@ public class Actions {
             BonitaUpdateAPI bonitaUpdateAPI = new BonitaUpdateAPI();
      
 
-            // logger.fine("#### log:Actions_2 ["+action+"]");
+           logger.info("#### log:Actions ["+action+"]");
            if ("init".equals(action)) {
-                actionAnswer.responseMap = bonitaUpdateAPI.init( parameter );
+                actionAnswer.responseMap = bonitaUpdateAPI.init( parameter,pageResourceProvider );
                 
            } else if ("refresh".equals(action)) {
                 actionAnswer.responseMap = bonitaUpdateAPI.refresh( parameter );
@@ -143,8 +143,8 @@ public class Actions {
            } else if ("refreshserver".equals(action)) {
                 actionAnswer.responseMap = bonitaUpdateAPI.refreshServer( parameter );
                 
-           } else if ("download".equals(action)) {
-                actionAnswer.responseMap = bonitaUpdateAPI.download( parameter );
+           } else if ("downloadallpatches".equals(action)) {
+                actionAnswer.responseMap = bonitaUpdateAPI.downloadAllPatches( parameter );
                 
            } else if ("install".equals(action))
            {
@@ -152,11 +152,33 @@ public class Actions {
            } else if ("uninstall".equals(action))
            {
                 actionAnswer.responseMap = bonitaUpdateAPI.uninstall( parameter );           
+           } else if ("downloadPatchFile".equals(action)) 
+           {
+               Map<String,String> mapHeaders = bonitaUpdateAPI.downloadAllPatches( parameter );
            } else if ("tangoserverlistpatches".equals(action))
-            {
+           {
                  actionAnswer.responseMap = bonitaUpdateAPI.tangoserverListPatches( parameter );
+           }
+           else if ("tangogetPatchFile".equals(action))                   
+           {
+               logger.info("------------------------------ tangogetPatchFile");
+                    actionAnswer.isManaged=true;
+                    actionAnswer.isResponseMap=false;
+    
+                    // ATTENTION : on a Linux Tomcat, order is important : first, HEADER then CONTENT. on Windows Tomcat, don't care
+                    // logger.fine("#### TruckMilk:Actions downloadParamFile write To Output=["+parameter.toString()+"]");
+    
+                    String logHeaders="";
+                    Map<String,String> mapHeaders = bonitaUpdateAPI.tangoDownloadPatch( parameter,response );
+                      /*
+                     */
+                    // response.addHeader("content-disposition", "attachment; filename=LogFiles.zip");
+                    // response.addHeader("content-type", "application/zip");
+                  
+    
+            } else if ("updateparameters".equals( action )) {
+                actionAnswer.responseMap = bonitaUpdateAPI.updateParameters(parameter, pageResourceProvider );
             }
-           
             logger.info("#### TruckMilk:Actions END responseMap.size()="+actionAnswer.responseMap.size());
             return actionAnswer;
         } catch (Exception e) {

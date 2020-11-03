@@ -1,5 +1,8 @@
 package org.bonitasoft.bonitaupdate.page;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.bonitasoft.bonitaupdate.page.PatchConfiguration.FOLDER;
 import org.bonitasoft.bonitaupdate.patch.Patch;
 import org.bonitasoft.bonitaupdate.patch.Patch.LoadPatchResult;
@@ -21,15 +24,18 @@ public class BonitaLocalServer {
     }
 
     public ListPatches getInstalledPatch() {
-        PatchDirectory patchDirectory = new PatchDirectory(STATUS.INSTALLED, patchConfiguration.getFolder( FOLDER.INSTALL) );
-        return patchDirectory.getListPatches();
+        PatchDirectory patchDirectory = new PatchDirectory(STATUS.INSTALLED, patchConfiguration.getFolder( FOLDER.INSTALL), null );
+        return patchDirectory.getListPatches( Boolean.TRUE );
     }
 
     public ListPatches getDownloadedPatch() {
-        PatchDirectory patchDirectory = new PatchDirectory(STATUS.DOWNLOADED, patchConfiguration.getFolder( FOLDER.DOWNLOAD) );
-        return patchDirectory.getListPatches(  );
+        PatchDirectory patchDirectory = new PatchDirectory(STATUS.DOWNLOADED, patchConfiguration.getFolder( FOLDER.DOWNLOAD), null );
+        return patchDirectory.getListPatches(  Boolean.FALSE );
     }
     
+    public PatchDirectory getDownloadedPatchDirecty() {
+        return new PatchDirectory(STATUS.DOWNLOADED, patchConfiguration.getFolder( FOLDER.DOWNLOAD), null );
+    }
     /**
      * Where to search the patch
      * @param folder
@@ -38,10 +44,16 @@ public class BonitaLocalServer {
      */
     public LoadPatchResult getPatchByName(FOLDER folder, String patchName ) {
             
-        PatchDirectory patchDirectory = new PatchDirectory( Patch.getStatusFromFolder(folder), patchConfiguration.getFolder(folder) );
+        PatchDirectory patchDirectory = new PatchDirectory( Patch.getStatusFromFolder(folder), patchConfiguration.getFolder(folder), null );
         return patchDirectory.getPatchByName( patchName );
         
     }
     
-   
+    protected List<PatchDirectory> getListPatchDirectory() {
+        List<PatchDirectory> listPatchDirectory = new ArrayList<>();
+        listPatchDirectory.add( new PatchDirectory(STATUS.INSTALLED, patchConfiguration.getFolder( FOLDER.INSTALL), null ));
+        listPatchDirectory.add( new PatchDirectory(STATUS.DOWNLOADED, patchConfiguration.getFolder( FOLDER.DOWNLOAD), null ));
+        return listPatchDirectory;
+    }
+
 }

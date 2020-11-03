@@ -129,10 +129,12 @@ appCommand.controller('BonitaUpdateController',
 						window.location.reload();
 					}
 					console.log("history",jsonResult);
-					self.localPatches 		= jsonResult.localPatches;
+					if (jsonResult.localPatches)
+						self.localPatches 		= jsonResult.localPatches;
 					
-				
-					self.serverPatches 			= jsonResult.serverPatches;
+					if (jsonResult.serverPatches)
+						self.serverPatches 			= jsonResult.serverPatches;
+
 					self.listevents				= jsonResult.listevents;
 					self.inprogress=false;
 						
@@ -143,7 +145,18 @@ appCommand.controller('BonitaUpdateController',
 				
 	}
 	
-
+	
+	this.getPatchStatus = function( status ) {
+		if (status === "SERVER") 
+			return "<div class='label label-default'>Available</div>";
+		if (status ==="INSTALLED")
+			return "<div class='label label-success'>Installed</div>";
+		if (status ==="DOWNLOADED")
+			return "<div class='label label-info'>Downloaded</div>";
+		return status; 	
+		
+	}
+	
 	
 	// -----------------------------------------------------------------------------------------
 	//  										Download
@@ -153,17 +166,14 @@ appCommand.controller('BonitaUpdateController',
 		this.listPatchesDownload = [ patch ];
 		this.operationinstall('install');
 	}
-	this.download = function( ) {
+	this.downloadAllPatches = function( ) {
 		var self=this;
 		self.inprogress=true;
 		self.listevents	=[];
-		for (var i in this.listPatchesDownload) {
-			listPatchAction.push( this.listPatchesDownload[ i ].name );
-		}
-		var paramUrl = { "patches":listPatchAction, "param":this.param};
+		var paramUrl = { "param":this.param, "tango":this.tango};
 		var json = encodeURIComponent(angular.toJson(paramUrl,true));
 		var d = new Date();
-		$http.get( '?page=custompage_bonitaupdate&action=download&paramjson='+json+'&t='+d.getTime() )
+		$http.get( '?page=custompage_bonitaupdate&action=downloadallpatches&paramjson='+json+'&t='+d.getTime() )
 			.success( function ( jsonResult, statusHttp, headers, config ) {
 				
 				// connection is lost ?
@@ -173,7 +183,7 @@ appCommand.controller('BonitaUpdateController',
 				}
 				console.log("history",jsonResult);
 				
-				self.listevents				= jsonResult.listevents;
+				self.listeventsdownload				= jsonResult.listevents;
 				if (jsonResult.listpatchesoperationstatus != null) {
 					// search each patch in the list and update it
 					// console.log("Start listpatchesoperationstatus listPatchSelected="+angular.toJson(self.listPatchesSelected));
@@ -276,8 +286,35 @@ appCommand.controller('BonitaUpdateController',
 		this.operationinstall( 'uninstall');
 
 	}
-	
+	// -----------------------------------------------------------------------------------------
+	//  										Update
+	// -----------------------------------------------------------------------------------------
 
+
+	this.updateparameters = function() {
+		console.log("update parameters");
+		this.inprogress=true;
+
+		var paramUrl = { "tango":this.tango};
+		var json = encodeURIComponent(angular.toJson(paramUrl,true));
+		var d = new Date();
+		var self = this;
+		self.listeventsupdate="";
+
+		$http.get( '?page=custompage_bonitaupdate&action=updateparameters&paramjson='+json+'&t='+d.getTime() )
+				.success( function ( jsonResult, statusHttp, headers, config ) {
+					
+					// connection is lost ?
+					if (statusHttp==401 || typeof jsonResult === 'string') {
+						console.log("Redirected to the login page !");
+						window.location.reload();
+					}
+					self.listeventsupdate = jsonResult.listevents;
+					self.inprogress=false;
+					console.log("updateParameters:",jsonResult);
+				}
+				);
+	}
 	// -----------------------------------------------------------------------------------------
 	//  										Excel
 	// -----------------------------------------------------------------------------------------

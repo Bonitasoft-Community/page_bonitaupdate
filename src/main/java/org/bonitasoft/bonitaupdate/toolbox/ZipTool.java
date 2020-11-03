@@ -40,7 +40,9 @@ public class ZipTool {
     public ResultZipOperation createZipFile(String completeZipFileName, String rootPathForListOfFileToSave, List<String> listFileName) {
         ResultZipOperation resultZipOperation = new ResultZipOperation();
         String completeFileName="" ;
-        try (FileOutputStream theZipOutput = new FileOutputStream(completeZipFileName+".zip")) {
+        if (! completeFileName.endsWith(".zip"))
+            completeFileName+=".zip";
+        try (FileOutputStream theZipOutput = new FileOutputStream(completeZipFileName)) {
 
             ZipOutputStream outZipStream = new ZipOutputStream(theZipOutput);
             for (String fileName : listFileName) {

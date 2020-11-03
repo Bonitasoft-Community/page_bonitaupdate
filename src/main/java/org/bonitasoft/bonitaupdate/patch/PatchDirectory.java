@@ -16,9 +16,13 @@ package org.bonitasoft.bonitaupdate.patch;
 // -----------------------------------------------------------------------------
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.bonitasoft.bonitaupdate.patch.Patch.LoadPatchResult;
+import org.bonitasoft.bonitaupdate.patch.Patch.SCOPE;
 import org.bonitasoft.bonitaupdate.patch.Patch.STATUS;
 import org.bonitasoft.log.event.BEvent;
 import org.bonitasoft.log.event.BEvent.Level;
@@ -35,16 +39,21 @@ public class PatchDirectory {
             "Check the folder");
     
     
-    private static BEvent eventPatchDoesNotExist = new BEvent(PatchDirectory.class.getName(), 2, Level.APPLICATIONERROR,
+    public final static BEvent eventPatchDoesNotExist = new BEvent(PatchDirectory.class.getName(), 2, Level.APPLICATIONERROR,
             "Patch does not exist", "The patch name given does not match any patch", "patch can't be retrieved",
             "Check the folder / patch name");
     
-    File patchSourcePath;
-    STATUS statusPath;
+    private File patchSourcePath;
+    private STATUS statusPath;
+    /**
+     * keep the scope of this directory. May be null if the path contains different scope.
+     */
+    private SCOPE scope;
     
-    public PatchDirectory( STATUS statusPath, File patchSourcePath) {
+    public PatchDirectory( STATUS statusPath, File patchSourcePath, SCOPE scope) {
         this.patchSourcePath = patchSourcePath;
         this.statusPath = statusPath;
+        this.scope = scope;
     }
 
     public static class ListPatches {
@@ -74,6 +83,23 @@ public class PatchDirectory {
             }
             return false;
         }
+        /**
+         * Remove patch from this list of path
+         * @param listPatchToRemove
+         */
+        public void removeFromList( ListPatches listPatchToRemove) {
+            for( Patch patch : listPatchToRemove.listPatch) {
+                if (listPatch.contains( patch ))
+                    listPatch.remove(patch);
+            }
+        }
+        
+        public void removeDuplicates() {
+            List<Patch> listWithoutDuplicates = listPatch.stream()
+                    .distinct().collect(Collectors.toList());
+            listPatch= listWithoutDuplicates;
+           }
+        
         public String toString() {
             StringBuilder result = new StringBuilder();
             for (Patch patch : listPatch) {
@@ -83,10 +109,17 @@ public class PatchDirectory {
         }
     }
 
+    
+    public File getPath() {
+        return patchSourcePath;  }
+    /**
+     * 
+     * @param patchName
+     * @return
+     */
     public LoadPatchResult getPatchByName( String patchName ) {
-        File filePatch = new File(patchSourcePath.getAbsoluteFile()+File.separator+patchName+".zip" );
-        if (filePatch.exists())
-            {
+        File filePatch = new File(patchSourcePath.getAbsoluteFile()+File.separator+Patch.getFileNameByPatchName(patchName) );
+        if (filePatch.exists()) {
             return  Patch.loadFromFile(statusPath, filePatch);
             }
         LoadPatchResult loadPatchResult = new LoadPatchResult();
@@ -94,10 +127,10 @@ public class PatchDirectory {
         return loadPatchResult;
     }
     /**
-     * @param patchSourcePath
+     * @param onlyInstalledPatch : if null, all patches. If true, only installed patch (a file <patch>_uninstall.zip exist). if false, only non installed patch
      * @return
      */
-    public ListPatches getListPatches() {
+    public ListPatches getListPatches(Boolean onlyInstalledPatch) {
 
         ListPatches listPatch = new ListPatches();
         if (! patchSourcePath.exists() || ! patchSourcePath.isDirectory())
@@ -106,16 +139,32 @@ public class PatchDirectory {
             return listPatch;
         }
         try {
-
+            Set<String> allFilesName = new HashSet<>();
             for (final File f : patchSourcePath.listFiles()) {
-
-                if (f.isFile() && f.getName().endsWith(".zip")) {
-                    // this is a Patch
-
+                if (f.isFile() ) {
+                    allFilesName.add( f.getName());
+                }
+            }
+            for (final File f : patchSourcePath.listFiles()) {
+                
+                if (f.isFile() && Patch.isAPatchName( f.getName())) {
+                    // this is a Patch INSTALLED or NOT ?
+                    if (onlyInstalledPatch != null)
+                    {
+                        boolean isInstall= checkIfPatchIsInstalled( f, allFilesName);
+                        if (isInstall && Boolean.FALSE.equals(onlyInstalledPatch))
+                            continue;
+                        if (! isInstall && Boolean.TRUE.equals(onlyInstalledPatch))
+                            continue;
+                        
+                    }
                     LoadPatchResult loadPatchResult = Patch.loadFromFile(statusPath, f);
                     listPatch.listEvents.addAll(loadPatchResult.listEvents);
-                    if (! BEventFactory.isError(loadPatchResult.listEvents))
+                    if (! BEventFactory.isError(loadPatchResult.listEvents)) {
+                        if (scope!=null)
+                            loadPatchResult.patch.scope = scope;                    
                         listPatch.listPatch.add(loadPatchResult.patch);
+                    }
                 }
             }
         } catch (Exception e) {
@@ -125,4 +174,11 @@ public class PatchDirectory {
 
     }
 
+   
+    
+    private boolean checkIfPatchIsInstalled( File f, Set<String>allFilesName) 
+    {
+        String uninstallFileName = Patch.getUninstallFileName( Patch.getNameFromFileName( f) );
+        return allFilesName.contains(uninstallFileName);
+    }
 }
