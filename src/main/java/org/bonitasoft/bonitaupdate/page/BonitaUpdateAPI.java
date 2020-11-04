@@ -54,7 +54,7 @@ public class BonitaUpdateAPI {
         ResultRefresh resultRefresh = getListPatches(patchConfiguration);
         listEvents.addAll(resultRefresh.listEvents);
 
-        result.put(BonitaPatchJson.CST_JSON_LOCALPATCHED, PatchDecoJson.toJson(resultRefresh.listAllPatches));
+        result.put(BonitaPatchJson.CST_JSON_LOCALPATCHED, PatchDecoJson.getInstance().toJsonSortedBySequence(resultRefresh.listAllPatches));
         result.put(BonitaPatchJson.CST_JSON_LISTEVENTS, BEventFactory.getHtml(listEvents));
 
         return result;
@@ -73,10 +73,10 @@ public class BonitaUpdateAPI {
 
         ResultRefresh resultRefresh = getListPatches(patchConfiguration);
 
-        result.put(BonitaPatchJson.CST_JSON_LOCALPATCHED, PatchDecoJson.toJson(resultRefresh.listAllPatches));
+        result.put(BonitaPatchJson.CST_JSON_LOCALPATCHED, PatchDecoJson.getInstance().toJsonSortedBySequence( resultRefresh.listAllPatches));
         result.put(BonitaPatchJson.CST_JSON_LISTEVENTS, BEventFactory.getHtml(resultRefresh.listEvents));
 
-        result.put(BonitaPatchJson.CST_JSON_LOCALPATCHED, PatchDecoJson.toJson(resultRefresh.listAllPatches));
+        result.put(BonitaPatchJson.CST_JSON_LOCALPATCHED, PatchDecoJson.getInstance().toJsonSortedBySequence(resultRefresh.listAllPatches));
 
         return result;
     }
@@ -121,7 +121,7 @@ public class BonitaUpdateAPI {
         // listPatchServer.removeFromList(listPatchedDownloaded);
 
         result.put(BonitaPatchJson.CST_JSON_LISTEVENTS, BEventFactory.getHtml(listPatchServer.listEvents));
-        result.put(BonitaPatchJson.CST_JSON_SERVERPATCHES, PatchDecoJson.toJson(listPatchServer.listPatch));
+        result.put(BonitaPatchJson.CST_JSON_SERVERPATCHES, PatchDecoJson.getInstance().toJsonSortedBySequence(listPatchServer.listPatch));
 
         return result;
     }
@@ -134,7 +134,7 @@ public class BonitaUpdateAPI {
      */
     public Map<String, Object> downloadAllPatches(ParameterUpdate parameter) {
         Map<String, Object> result = new HashMap<>();
-        ArrayList<BEvent> listEvents = new ArrayList();
+        ArrayList<BEvent> listEvents = new ArrayList<>();
         
         if (parameter.bonitaVersion == null)
             parameter.detectBonitaVersion(parameter.bonitaRootDirectory);
@@ -149,22 +149,42 @@ public class BonitaUpdateAPI {
         ListPatches listPatchServer = bonitaClientTangoServer.getListPatches();
         int numberPatchesOnServer = listPatchServer.listPatch.size();
         listEvents.addAll(listPatchServer.listEvents);
+
+        BonitaLocalServer bonitaLocalServer = new BonitaLocalServer(patchConfiguration);
+        ListPatches allPatches = new ListPatches();
+        ListPatches listPatchDownloaded = null;
+        ListPatches listPatchInstalled = bonitaLocalServer.getInstalledPatch();
+        ListPatches listPatchedDownloaded = bonitaLocalServer.getDownloadedPatch();
+        int numberOfPatchesLocal = listPatchInstalled.listPatch.size() + listPatchedDownloaded.listPatch.size();
+        
         if (! BEventFactory.isError(listEvents)) {
-                
-    
-            BonitaLocalServer bonitaLocalServer = new BonitaLocalServer(patchConfiguration);
-            ListPatches listPatchInstalled = bonitaLocalServer.getInstalledPatch();
-            ListPatches listPatchedDownloaded = bonitaLocalServer.getDownloadedPatch();
-            int numberOfPatchesLocal = listPatchInstalled.listPatch.size() + listPatchedDownloaded.listPatch.size();
-    
+                    
             listPatchServer.removeFromList(listPatchInstalled);
             listPatchServer.removeFromList(listPatchedDownloaded);
     
-            ListPatches listPatchDownloaded = bonitaClientTangoServer.download(listPatchServer, bonitaLocalServer);
+            listPatchDownloaded = bonitaClientTangoServer.download(listPatchServer, bonitaLocalServer);
             listPatchDownloaded.listEvents.add(new BEvent(eventPatchDownloadedSynthesis, "Patches on server:" + numberPatchesOnServer + "; patches locals:" + numberOfPatchesLocal + "; patches Downloaded:" + listPatchDownloaded.listPatch.size()));
             listEvents.addAll( listPatchDownloaded.listEvents );
-            result.put(BonitaPatchJson.CST_JSON_SERVERPATCHES, PatchDecoJson.toJson(listPatchDownloaded.listPatch));
+ 
+            for(Patch patch : listPatchDownloaded.listPatch) {
+                allPatches.listPatch.add( patch);
+            }
         }
+        // rebuild the complete liste
+        for(Patch patch : listPatchInstalled.listPatch) {
+            patch.setStatus(STATUS.INSTALLED);
+            allPatches.listPatch.add( patch);
+        }
+        for(Patch patch : listPatchedDownloaded.listPatch) {
+            if (listPatchDownloaded !=null && ! listPatchDownloaded.isContains(patch.getName() ) ) {
+                patch.setStatus(STATUS.DOWNLOADED);
+            allPatches.listPatch.add( patch);
+        }
+        }
+
+        
+          
+        result.put(BonitaPatchJson.CST_JSON_SERVERPATCHES, PatchDecoJson.getInstance().toJsonSortedBySequence(allPatches.listPatch));
         result.put(BonitaPatchJson.CST_JSON_LISTEVENTS, BEventFactory.getHtml(listEvents));
 
         return result;
@@ -246,7 +266,7 @@ public class BonitaUpdateAPI {
      * @param parameter
      * @return
      */
-    public Map<String, Object> tangoserverListPatches(ParameterUpdate parameter) {
+    public Map<String, Object> tangoListPatches(ParameterUpdate parameter) {
         Map<String, Object> result = new HashMap<>();
         List<BEvent> listEvents = new ArrayList<>();
         try {
@@ -256,7 +276,7 @@ public class BonitaUpdateAPI {
 
             ListPatches listPatchServer = bonitaTangoPatchServer.getAvailablesPatch();
             listEvents.addAll(listPatchServer.listEvents);
-            result.put(BonitaPatchJson.CST_JSON_LOCALPATCHED, PatchDecoJson.toJson(listPatchServer.listPatch));
+            result.put(BonitaPatchJson.CST_JSON_LOCALPATCHED, PatchDecoJson.getInstance().toJsonSortedBySequence(listPatchServer.listPatch));
             result.put(BonitaPatchJson.CST_JSON_STATUSOPERATION, BEventFactory.isError(listEvents) ? CST_STATUS_FAILED : CST_STATUS_SUCCESS);
         } catch (Exception e) {
             StringWriter sw = new StringWriter();

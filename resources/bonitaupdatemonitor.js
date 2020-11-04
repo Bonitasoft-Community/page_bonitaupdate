@@ -128,7 +128,7 @@ appCommand.controller('BonitaUpdateController',
 						console.log("Redirected to the login page !");
 						window.location.reload();
 					}
-					console.log("history",jsonResult);
+					console.log("refresh",jsonResult);
 					if (jsonResult.localPatches)
 						self.localPatches 		= jsonResult.localPatches;
 					
@@ -152,7 +152,11 @@ appCommand.controller('BonitaUpdateController',
 		if (status ==="INSTALLED")
 			return "<div class='label label-success'>Installed</div>";
 		if (status ==="DOWNLOADED")
+			return "<div class='label label-primary'>Downloaded</div>";
+		if (status ==="DOWNLOADEDWITHSUCCESS")
 			return "<div class='label label-info'>Downloaded</div>";
+		if (status ==="DOWNLOADEDWITHERROR")
+			return "<div class='label label-danger'>Error at Downloaded</div>";
 		return status; 	
 		
 	}
@@ -181,26 +185,9 @@ appCommand.controller('BonitaUpdateController',
 					console.log("Redirected to the login page !");
 					window.location.reload();
 				}
-				console.log("history",jsonResult);
+				console.log("downloadResult=",jsonResult);
+				self.serverPatches = jsonResult.serverPatches;
 				
-				self.listeventsdownload				= jsonResult.listevents;
-				if (jsonResult.listpatchesoperationstatus != null) {
-					// search each patch in the list and update it
-					// console.log("Start listpatchesoperationstatus listPatchSelected="+angular.toJson(self.listPatchesSelected));
-					for (var i in self.listPatchesDownload) {
-						// console.log("Search Local["+self.listPatchesSelected[ i ].name+" in ="+angular.toJson(jsonResult.listpatchesoperationstatus));
-						for (var j in jsonResult.listpatchesoperationstatus) {
-							
-							// console.log("Comapre ["+self.listPatchesSelected[ i ].name+"] with ["+jsonResult.listpatchesoperationstatus[ j ].name+"]");
-							if (self.listPatchesDownload[ i ].name === jsonResult.listpatchesoperationstatus[ j ].name) {
-								// console.log("MATCH");
-								self.listPatchesDownload[ i ].status			= jsonResult.listpatchesoperationstatus[ j ].status;
-								self.listPatchesDownload[ i ].statusoperation 	= jsonResult.listpatchesoperationstatus[ j ].statusoperation;
-								self.listPatchesDownload[ i ].statuslistevents 	= jsonResult.listpatchesoperationstatus[ j ].statuslistevents;
-							}
-						}
-					}
-				}
 				
 				self.inprogress=false;
 				// refresh the local list now
@@ -345,7 +332,10 @@ appCommand.controller('BonitaUpdateController',
 
 	
 	<!-- Manage the event -->
-	this.getHtml = function ( listevents ) {
+	this.getHtml = function ( listevents, source ) {
+		console.log("getHtml ["+source+"] html="+listevents);
+		if (! listevents)
+			return "";
 		return $sce.trustAsHtml(  listevents );
 	}
 

@@ -36,8 +36,9 @@ public class Patch {
 
     private static final String CST_FILENAME_PATCHDESCRIPTION = "patch_description.json";
 
+    // DOWNLOADEDWITHSUCCESS, DOWNLOADEDWITHERROR are just an indication of a DOWNALOAD
     public enum STATUS {
-        INSTALLED, DOWNLOADED, SERVER
+        INSTALLED, DOWNLOADED, SERVER, DOWNLOADEDWITHSUCCESS, DOWNLOADEDWITHERROR, ERROR
     };
 
     public enum INSTALLATIONPOLICY {

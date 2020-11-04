@@ -15,7 +15,10 @@ package org.bonitasoft.bonitaupdate.patch;
 
 // -----------------------------------------------------------------------------
 import java.io.File;
+
+import java.util.Comparator;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -107,11 +110,22 @@ public class PatchDirectory {
             }
             return result.toString();
         }
+        public void sort() {
+            Collections.sort(listPatch, new Comparator<Patch>()
+            {
+              public int compare(Patch s1,
+                      Patch s2)
+              {
+                return s1.getName().compareTo(s2.getName());
+              }
+            });
+        }
     }
 
     
     public File getPath() {
-        return patchSourcePath;  }
+        return patchSourcePath;  
+        }
     /**
      * 
      * @param patchName
@@ -174,7 +188,9 @@ public class PatchDirectory {
 
     }
 
-   
+ 
+
+  
     
     private boolean checkIfPatchIsInstalled( File f, Set<String>allFilesName) 
     {

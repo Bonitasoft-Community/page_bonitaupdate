@@ -155,11 +155,11 @@ public class Actions {
            } else if ("downloadPatchFile".equals(action)) 
            {
                Map<String,String> mapHeaders = bonitaUpdateAPI.downloadAllPatches( parameter );
-           } else if ("tangoserverlistpatches".equals(action))
+           } else if ("tangoListPatches".equals(action))
            {
-                 actionAnswer.responseMap = bonitaUpdateAPI.tangoserverListPatches( parameter );
+                 actionAnswer.responseMap = bonitaUpdateAPI.tangoListPatches( parameter );
            }
-           else if ("tangogetPatchFile".equals(action))                   
+           else if ("tangoGetPatchFile".equals(action))                   
            {
                logger.info("------------------------------ tangogetPatchFile");
                     actionAnswer.isManaged=true;
