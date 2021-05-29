@@ -35,6 +35,8 @@ public class ParametersConfiguration {
     public int tangoServerPort;
     public String tangoServerUserName;
     public String tangoServerPassword;
+    
+    public boolean isTango;
 
     /**
      * This is the BonitaVersion local, send to the server to get patches on this version
@@ -66,6 +68,7 @@ public class ParametersConfiguration {
         mapTango.put(BonitaPatchJson.CST_JSON_SERVERPORT, tangoServerPort);
         mapTango.put(BonitaPatchJson.CST_JSON_SERVERUSERNAME, tangoServerUserName);
         mapTango.put(BonitaPatchJson.CST_JSON_SERVERPASSWORD, tangoServerPassword);
+        mapTango.put(BonitaPatchJson.CST_JSON_ISTANGO, isTango);
         return mapTango;
     }
     public void fromMap(Map<String, Object> mapTango) {
@@ -75,6 +78,7 @@ public class ParametersConfiguration {
         tangoServerPort = TypesCast.getInteger(mapTango.get(BonitaPatchJson.CST_JSON_SERVERPORT), 8080);
         tangoServerUserName = TypesCast.getString(mapTango.get(BonitaPatchJson.CST_JSON_SERVERUSERNAME), null);
         tangoServerPassword = TypesCast.getString(mapTango.get(BonitaPatchJson.CST_JSON_SERVERPASSWORD), null);
+        isTango = TypesCast.getBoolean(mapTango.get(BonitaPatchJson.CST_JSON_ISTANGO), false);
    
     }
     /**

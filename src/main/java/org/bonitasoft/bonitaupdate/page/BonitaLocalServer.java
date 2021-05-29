@@ -24,17 +24,17 @@ public class BonitaLocalServer {
     }
 
     public ListPatches getInstalledPatch() {
-        PatchDirectory patchDirectory = new PatchDirectory(STATUS.INSTALLED, patchConfiguration.getFolder( FOLDER.INSTALL), null );
+        PatchDirectory patchDirectory =  PatchDirectory.getInstance(STATUS.INSTALLED, patchConfiguration.getFolder( FOLDER.INSTALL), null );
         return patchDirectory.getListPatches( Boolean.TRUE );
     }
 
     public ListPatches getDownloadedPatch() {
-        PatchDirectory patchDirectory = new PatchDirectory(STATUS.DOWNLOADED, patchConfiguration.getFolder( FOLDER.DOWNLOAD), null );
+        PatchDirectory patchDirectory = PatchDirectory.getInstance(STATUS.DOWNLOADED, patchConfiguration.getFolder( FOLDER.DOWNLOAD), null );
         return patchDirectory.getListPatches(  Boolean.FALSE );
     }
     
     public PatchDirectory getDownloadedPatchDirecty() {
-        return new PatchDirectory(STATUS.DOWNLOADED, patchConfiguration.getFolder( FOLDER.DOWNLOAD), null );
+        return PatchDirectory.getInstance(STATUS.DOWNLOADED, patchConfiguration.getFolder( FOLDER.DOWNLOAD), null );
     }
     /**
      * Where to search the patch
@@ -44,15 +44,15 @@ public class BonitaLocalServer {
      */
     public LoadPatchResult getPatchByName(FOLDER folder, String patchName ) {
             
-        PatchDirectory patchDirectory = new PatchDirectory( Patch.getStatusFromFolder(folder), patchConfiguration.getFolder(folder), null );
+        PatchDirectory patchDirectory = PatchDirectory.getInstance( Patch.getStatusFromFolder(folder), patchConfiguration.getFolder(folder), null );
         return patchDirectory.getPatchByName( patchName );
         
     }
     
     protected List<PatchDirectory> getListPatchDirectory() {
         List<PatchDirectory> listPatchDirectory = new ArrayList<>();
-        listPatchDirectory.add( new PatchDirectory(STATUS.INSTALLED, patchConfiguration.getFolder( FOLDER.INSTALL), null ));
-        listPatchDirectory.add( new PatchDirectory(STATUS.DOWNLOADED, patchConfiguration.getFolder( FOLDER.DOWNLOAD), null ));
+        listPatchDirectory.add( PatchDirectory.getInstance(STATUS.INSTALLED, patchConfiguration.getFolder( FOLDER.INSTALL), null ));
+        listPatchDirectory.add( PatchDirectory.getInstance(STATUS.DOWNLOADED, patchConfiguration.getFolder( FOLDER.DOWNLOAD), null ));
         return listPatchDirectory;
     }
 

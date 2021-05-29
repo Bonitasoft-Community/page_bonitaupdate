@@ -161,7 +161,43 @@ appCommand.controller('BonitaUpdateController',
 		
 	}
 	
+	// -----------------------------------------------------------------------------------------
+	//  										Patch Library (Tango)
+	// -----------------------------------------------------------------------------------------
+
+	this.refreshlibrary = function(  )
+	{
+		var self=this;
+		self.inprogress=true;
+		self.listevents	="";
+		// 7.6 : the server force a cache on all URL, so to bypass the cache, then create a different URL
+		var d = new Date();
+			
+		var paramUrl = {  "tango":this.tango};
+		
+		var json = encodeURIComponent(angular.toJson(paramUrl, true));
 	
+	
+		$http.get( '?page=custompage_bonitaupdate&action=refreshlibrary&paramjson='+json+'&t='+d.getTime() )
+				.success( function ( jsonResult, statusHttp, headers, config ) {
+					
+					// connection is lost ?
+					if (statusHttp==401 || typeof jsonResult === 'string') {
+						console.log("Redirected to the login page !");
+						window.location.reload();
+					}
+					console.log("refreshlibrary",jsonResult);
+					
+					self.patchlibrary 			= jsonResult;
+
+					self.inprogress=false;
+						
+				})
+				.error( function() {
+					self.inprogress=false;
+					});
+				
+	}
 	// -----------------------------------------------------------------------------------------
 	//  										Download
 	// -----------------------------------------------------------------------------------------

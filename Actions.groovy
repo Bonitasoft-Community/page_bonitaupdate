@@ -143,6 +143,9 @@ public class Actions {
            } else if ("refreshserver".equals(action)) {
                 actionAnswer.responseMap = bonitaUpdateAPI.refreshServer( parameter );
                 
+           } else if ("refreshlibrary".equals(action)) {
+                actionAnswer.responseMap = bonitaUpdateAPI.refreshPatchLibrary( parameter );
+                
            } else if ("downloadallpatches".equals(action)) {
                 actionAnswer.responseMap = bonitaUpdateAPI.downloadAllPatches( parameter );
                 

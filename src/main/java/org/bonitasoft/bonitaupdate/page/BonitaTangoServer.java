@@ -10,6 +10,7 @@ import org.bonitasoft.bonitaupdate.patch.Patch.STATUS;
 import org.bonitasoft.bonitaupdate.patch.PatchDirectory;
 import org.bonitasoft.bonitaupdate.patch.PatchDirectory.ListPatches;
 import org.bonitasoft.log.event.BEvent;
+import org.bonitasoft.log.event.BEvent.Level;
 
 /**
  * Tango Server
@@ -25,10 +26,20 @@ import org.bonitasoft.log.event.BEvent;
  */
 public class BonitaTangoServer extends BonitaLocalServer {
 
+
+    
+    private static BEvent eventNoPatchForThisVersion = new BEvent(BonitaTangoServer.class.getName(), 1, Level.INFO,
+            "No patches for this release", "For the expected release, no patches are available (this version is not referenced in the Tango server)");
+
+    
     public BonitaTangoServer(PatchConfiguration patchConfiguration) {
         super(patchConfiguration);
     }
 
+    /**
+     * 
+     * @return
+     */
     public ListPatches getAvailablesPatch() {
         ListPatches listPatches = new ListPatches();
         listPatches.add(getInstalledPatch());
@@ -37,19 +48,71 @@ public class BonitaTangoServer extends BonitaLocalServer {
         // now, get the local path with the complete version (example, 7.8.4)
         File folderTangoRelease = new File(patchConfiguration.getFolderPath(FOLDER.TANGOSERVER) + patchConfiguration.bonitaVersion);
 
-        PatchDirectory patchDirectoryRelease = new PatchDirectory(STATUS.SERVER, folderTangoRelease, SCOPE.PUBLIC);
-        listPatches.add(patchDirectoryRelease.getListPatches( null ));
-        File folderUserName = new File(patchConfiguration.getFolderPath(FOLDER.TANGOSERVER) + patchConfiguration.bonitaVersion + File.separator + patchConfiguration.connectionUserName);
-        if (folderUserName.exists()) {
-            PatchDirectory patchDirectoryUserRelease = new PatchDirectory(STATUS.SERVER, folderUserName, SCOPE.PRIVATE);
-            listPatches.add( patchDirectoryUserRelease.getListPatches( null ) );
-        }
+        listPatches.add(getPatchesInDirectory(folderTangoRelease, false));
+
         
         listPatches.removeDuplicates();
         return listPatches;
     }
     
+    public String getPath() {
+        return patchConfiguration.getFolderPath(FOLDER.TANGOSERVER);
+    }
+    /**
+     * 
+     * @return
+     */
+    public ListPatches getAllAvailablesPatch() {
+        ListPatches listPatches = new ListPatches();
+
+        // now, get the local path with the complete version (example, 7.8.4)
+        File folderRootTango = new File(patchConfiguration.getFolderPath(FOLDER.TANGOSERVER) );
+
+        for (final File f : folderRootTango.listFiles()) {
+
+            if (f.isDirectory()) {
+                ListPatches localPatches = getPatchesInDirectory( f, true );
+                listPatches.add( localPatches);
+            }
+        }
+        listPatches.removeDuplicates();
+        return listPatches;
+    }
     
+    /**
+     * 
+     * @param folderTangoRelease
+     * @param allFolderUsers
+     * @return
+     */
+  private ListPatches getPatchesInDirectory(File folderTangoRelease, boolean allFolderUsers ) {
+          ListPatches listPatches = new ListPatches();
+
+       
+          PatchDirectory patchDirectoryRelease = PatchDirectory.getInstance(STATUS.SERVER, folderTangoRelease, SCOPE.PUBLIC);
+          if (! patchDirectoryRelease.isPathExist()) {
+              listPatches.listEvents.add( new BEvent( eventNoPatchForThisVersion, "Version ["+patchConfiguration.bonitaVersion+"]"));
+              return listPatches;
+          }
+          listPatches.add(patchDirectoryRelease.getListPatches( null ));
+          if (allFolderUsers) {
+              for (final File subFolderUserName : folderTangoRelease.listFiles()) {
+                  if (subFolderUserName.isDirectory()) {
+                      PatchDirectory patchDirectoryUserRelease = PatchDirectory.getInstancePrivate(STATUS.SERVER, subFolderUserName, subFolderUserName.getName());
+                      listPatches.add( patchDirectoryUserRelease.getListPatches( null ) );
+                  }
+              }
+          }
+          else {
+              File folderUserName = new File(patchConfiguration.getFolderPath(FOLDER.TANGOSERVER) + patchConfiguration.bonitaVersion + File.separator + patchConfiguration.connectionUserName);
+              if (folderUserName.exists()) {
+                  PatchDirectory patchDirectoryUserRelease = PatchDirectory.getInstancePrivate(STATUS.SERVER, folderUserName, folderUserName.getName());
+                  listPatches.add( patchDirectoryUserRelease.getListPatches( null ) );
+              }
+          }
+          listPatches.removeDuplicates();
+          return listPatches;
+      }
   
     public LoadPatchResult getPatchByName( String patchName) {
         List<PatchDirectory> listPatchDirectory = getListPatchDirectory();
@@ -63,6 +126,8 @@ public class BonitaTangoServer extends BonitaLocalServer {
         return loadPatchResult;
     }
     
+    
+    
     @Override
     protected List<PatchDirectory> getListPatchDirectory() {
         List<PatchDirectory> listPatchDirectory = super.getListPatchDirectory();
@@ -70,13 +135,13 @@ public class BonitaTangoServer extends BonitaLocalServer {
         
         // now, get the local path with the complete version (example, 7.8.4)
         File folderTangoRelease = new File(patchConfiguration.getFolderPath(FOLDER.TANGOSERVER) + patchConfiguration.bonitaVersion);
-
-        PatchDirectory patchDirectoryRelease = new PatchDirectory(STATUS.SERVER, folderTangoRelease, SCOPE.PUBLIC);
+        
+        PatchDirectory patchDirectoryRelease = PatchDirectory.getInstance(STATUS.SERVER, folderTangoRelease, SCOPE.PUBLIC);
         listPatchDirectory.add( patchDirectoryRelease );
         
         File folderUserName = new File(patchConfiguration.getFolderPath(FOLDER.TANGOSERVER) + patchConfiguration.bonitaVersion + File.separator + patchConfiguration.connectionUserName);
         if (folderUserName.exists()) {
-            PatchDirectory patchDirectoryUserRelease = new PatchDirectory(STATUS.SERVER, folderUserName, SCOPE.PRIVATE);
+            PatchDirectory patchDirectoryUserRelease = PatchDirectory.getInstancePrivate(STATUS.SERVER, folderUserName, folderUserName.getName());
             listPatchDirectory.add( patchDirectoryUserRelease );
         }
         return listPatchDirectory;

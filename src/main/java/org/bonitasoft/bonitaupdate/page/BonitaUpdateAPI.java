@@ -125,7 +125,38 @@ public class BonitaUpdateAPI {
 
         return result;
     }
+    /* -------------------------------------------------------------------- */
+    /*                                                                      */
+    /* patch Librairy (the server is a Tango server) */
+    /*                                                                      */
+    /* -------------------------------------------------------------------- */
 
+    /**
+     * Call the Reference (Tango) server to get the list of patch available
+     * 
+     * @param parameter
+     * @return
+     */
+    public Map<String, Object> refreshPatchLibrary(ParameterUpdate parameter) {
+        Map<String, Object> result = new HashMap<>();
+
+        if (parameter.bonitaVersion == null)
+            parameter.detectBonitaVersion(parameter.bonitaRootDirectory);
+
+        PatchConfiguration patchConfiguration = parameter.getPatchConfiguration();
+        // we ask the server to get patches for my Local version.
+        patchConfiguration.parametersConfiguration.localBonitaVersion = parameter.bonitaVersion;
+
+        // get list of patch 
+        BonitaTangoServer bonitaTangoServer = new BonitaTangoServer(patchConfiguration);
+        ListPatches listPatchLibrary = bonitaTangoServer.getAllAvailablesPatch();
+        
+        result.put(BonitaPatchJson.CST_JSON_LISTEVENTS, BEventFactory.getHtml(listPatchLibrary.listEvents));
+        result.put(BonitaPatchJson.CST_JSON_LIBRARYPATCHES, PatchDecoJson.getInstance().toJsonSortedBySequence(listPatchLibrary.listPatch));
+        result.put(BonitaPatchJson.CST_JSON_LIBRARYPATCHESFILE, bonitaTangoServer.getPath());
+
+        return result;
+    }
     /**
      * Dowload all patch from server
      * 
@@ -285,7 +316,7 @@ public class BonitaUpdateAPI {
             logger.severe("Error " + e.getMessage() + " at " + exceptionDetails);
             listEvents.add( new BEvent(eventErrorDuringExecution, e, "During tangoserverListPatches at "+exceptionDetails));
         }
-        result.put(BonitaPatchJson.CST_JSON_LISTEVENTS, BEventFactory.getHtml(listEvents));
+        result.put(BonitaPatchJson.CST_JSON_LISTEVENTS, BEventFactory.getJsonFromListEvents(listEvents));
         return result;
 
     }

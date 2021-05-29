@@ -11,6 +11,7 @@ public class BonitaPatchJson {
     public static final String CST_JSON_PATCHNAME = "name";
     public static final String CST_JSON_BONITAVERSION = "bonitaversion";
     public static final String CST_JSON_PATCHSCOPE = "scope";
+    public static final String CST_JSON_PATCHUSERNAME ="username";
     
     public static final String CST_JSON_PATCHSTATUS = "status";
     public static final String CST_JSON_PATCHDATEREALEASE = "daterelease";
@@ -29,9 +30,13 @@ public class BonitaPatchJson {
     public static final String CST_JSON_SERVERPORT = "serverport";
     public static final String CST_JSON_SERVERPASSWORD = "serverpassword";
     public static final String CST_JSON_SERVERUSERNAME = "serverusername";
+    public static final String CST_JSON_ISTANGO = "istango";
     public static final String CST_JSON_STATUSLISTEVENTS = "statuslistevents";
     public static final String CST_JSON_STATUSOPERATION = "statusoperation";
     
+    public final static String CST_JSON_LIBRARYPATCHES ="libraryPatches";
+    public final static String CST_JSON_LIBRARYPATCHESFILE ="librarypatchesfile";
+
     
     static final String CST_JSON_LISTEVENTS = "listevents";
     static final String CST_JSON_LISTPATCHOPERATIONSTATUS = "listpatchesoperationstatus";

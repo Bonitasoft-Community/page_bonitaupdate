@@ -4,6 +4,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.logging.Logger;
 
 import org.bonitasoft.bonitaupdate.toolbox.FileTool;
 import org.bonitasoft.engine.session.APISession;
@@ -18,6 +19,8 @@ import org.bonitasoft.web.extension.page.PageResourceProvider;
  */
 public class PatchConfiguration {
 
+    private static Logger logger = Logger.getLogger(PatchConfiguration.class.getName());
+    private static String LOGGER_LABEL="BonitaUpdate.PatchConfiguration:";
     File serverFolder;
     File patchFolder;
     String bonitaVersion;
@@ -49,6 +52,12 @@ public class PatchConfiguration {
      */
     public List<BEvent> validateConfiguration() {
         List<BEvent> listEvents = new ArrayList<>();
+        logger.info(LOGGER_LABEL+"Check and creates directory :"
+                +"["+this.getFolderPath(FOLDER.INSTALL)+"],"
+                +"["+this.getFolderPath(FOLDER.DOWNLOAD)+"],"
+                +"["+this.getFolderPath(FOLDER.UNINSTALL)+"],"
+                +"["+this.getFolderPath(FOLDER.TANGOSERVER)+"]");
+                
         listEvents.addAll(FileTool.checkAndCreateDir(this.getFolderPath(FOLDER.INSTALL)));
         listEvents.addAll(FileTool.checkAndCreateDir(this.getFolderPath(FOLDER.DOWNLOAD)));
         listEvents.addAll(FileTool.checkAndCreateDir(this.getFolderPath(FOLDER.UNINSTALL)));

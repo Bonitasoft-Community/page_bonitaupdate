@@ -2,6 +2,7 @@ package org.bonitasoft.bonitaupdate.server;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.Serializable;
 import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.List;
@@ -90,6 +91,8 @@ public class BonitaClientTangoServer {
             RestApiResult restApiResult = bonitaServer.callRestJson(uri.toString(), "GET", "", "application/x-www-form-urlencoded", RESTCharsets.UTF_8.getValue(), 
                     collectOutput);
             listPatch.listEvents.addAll(restApiResult.listEvents);
+            if (BEventFactory.isError(listPatch.listEvents))
+                return listPatch;
             if (restApiResult.httpStatus == 404) {
                 listPatch.listEvents.add(new BEvent(eventServerIsNotATangoServer, bonitaServer.getUrlDescription()));
                 return listPatch;
@@ -97,6 +100,12 @@ public class BonitaClientTangoServer {
             // recalculate the list of patch
             Map<String, Object> jsonMap = (Map<String, Object>) collectOutput.getJson();
 
+            if (jsonMap.get("listevents") instanceof List) {
+                try {
+                    listPatch.listEvents.addAll( BEventFactory.getListEventsFromJson( (List<Map<String, Serializable>>) jsonMap.get("listevents")));
+                    
+                } catch(Exception e) {}
+            }
             List<Map<String, Object>> listPatchesFromServer = jsonMap == null ? null : (List<Map<String, Object>>) jsonMap.get("localPatches");
             if (listPatchesFromServer == null) {
                 listPatch.listEvents.add(new BEvent(eventServerNotATangoResult, bonitaServer.getUrlDescription()));

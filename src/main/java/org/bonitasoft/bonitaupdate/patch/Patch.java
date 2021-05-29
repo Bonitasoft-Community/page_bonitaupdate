@@ -75,6 +75,10 @@ public class Patch {
     String dateRelease;
     STATUS status;
     SCOPE scope;
+    /**
+     * when the scope is private, here the username
+     */
+    String userName;
     INSTALLATIONPOLICY installationPolicy;
 
     File patchFile;
@@ -103,7 +107,8 @@ public class Patch {
         result.put(BonitaPatchJson.CST_JSON_SEQUENCE, sequence);
         result.put(BonitaPatchJson.CST_JSON_BONITAVERSION, bonitaVersion);
         result.put(BonitaPatchJson.CST_JSON_PATCHSCOPE, scope == null ? SCOPE.PUBLIC.toString() : scope.toString());
-
+        result.put(BonitaPatchJson.CST_JSON_PATCHUSERNAME, userName);
+        
         result.put(BonitaPatchJson.CST_JSON_PATCHSTATUS, status.toString());
         result.put(BonitaPatchJson.CST_JSON_PATCHINSTALLATIONPOLICY, installationPolicy.toString());
         result.put(BonitaPatchJson.CST_JSON_PATCHFILESCONTENT, listFilesinPatch);

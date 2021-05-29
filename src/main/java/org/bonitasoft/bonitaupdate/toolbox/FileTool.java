@@ -45,6 +45,10 @@ public class FileTool {
             "File already exist", "Copy is impossible, destination file already exist", "Operation failed",
             "Delete the destination file first");
     
+    private final static BEvent eventDirectoryChecked = new BEvent(FileTool.class.getName(), 7,
+            Level.SUCCESS,
+            "Directory checked", "The existence of a directory is checked with sucess");
+    
     
     public FileTool() {
     }
@@ -56,13 +60,11 @@ public class FileTool {
      */
     public static String loadFile(String fileName) {
         StringBuffer result = new StringBuffer();
-        try {
-            FileReader fileReader = new FileReader(fileName);
+        try (FileReader fileReader = new FileReader(fileName);){
             int nbRead;
             char[] buffer = new char[50000];
             while ((nbRead = fileReader.read(buffer, 0, 50000)) > 0)
                 result.append(new String(buffer).substring(0, nbRead));
-            fileReader.close();
             return result.toString();
         } catch (Exception e) {
             return null;
@@ -105,25 +107,25 @@ public class FileTool {
 
             return listEvents;
         }
-
+        // do nothing if the directory exists
+        if (isDirectoryExist(completePathToCheck)) {
+            return listEvents;
+        }
+        
+        StringBuffer logOperation= new StringBuffer();
+        logOperation.append("Check directory ["+completePathToCheck+"]");
         try {
             // create all subdir
             File path = new File(completePathToCheck);
             path.mkdirs();
 
-            completePathToCheck = completePathToCheck.replace('/', '\\');
+            StringTokenizer st= new StringTokenizer(completePathToCheck, String.valueOf(File.separatorChar));
 
-            StringTokenizer st;
-            st = new StringTokenizer(completePathToCheck, "\\");
-
-            // create all sub directory
-            File directory = new File(completePathToCheck);
-            directory.mkdirs();
-
+       
             // then, check now they exist
             StringBuilder relativePath = new StringBuilder();
             // in Unix, the first character is the separator char.
-            if (completePathToCheck.startsWith("\\"))
+            if (completePathToCheck.startsWith( String.valueOf(File.separatorChar )))
                 relativePath.append( File.separatorChar );
 
             while (st.hasMoreTokens()) {
@@ -132,14 +134,17 @@ public class FileTool {
                 // theLog.log( this,LoggerLevel.Debug,"Check relative path
                 // ["+relativePath+"]");
                 // check that the path exist in the relative path
-                directory = new File(relativePath.toString());
-                if (directory != null && !directory.isDirectory()) {
+                File directory = new File(relativePath.toString());
+                if ( !directory.isDirectory()) {
                     listEvents.add(new BEvent(eventNotADirectory, "Name[" + relativePath + "]"));
                     return listEvents;
                 }
 
                 relativePath.append( File.separatorChar );
             }
+            logOperation.append("; Verified.");
+            listEvents.add(new BEvent(eventDirectoryChecked, "Check And Create Directory[" + logOperation.toString() + "]"));
+            
         } catch (Exception e) {
             listEvents.add(new BEvent(eventException, e, "Check And Create Directory: Complete Path[" + completePathToCheck + "]"));
             return listEvents;
@@ -147,6 +152,18 @@ public class FileTool {
         return listEvents;
     }
 
+    
+    public static boolean isDirectoryExist(String completePathToCheck) {
+        completePathToCheck = completePathToCheck.replace('/', File.separatorChar);
+        completePathToCheck = completePathToCheck.replace('\\', File.separatorChar);
+
+        if (completePathToCheck==null)
+            return false;
+        
+        File file = new File(completePathToCheck);
+        return file.exists();
+
+    }
     // ------------------------------------------------------------------------
     /**
      * rename the current file in a backup file Then, for a prefix=ThisIsMyMap,

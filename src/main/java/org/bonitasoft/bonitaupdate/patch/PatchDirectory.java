@@ -53,10 +53,23 @@ public class PatchDirectory {
      */
     private SCOPE scope;
     
-    public PatchDirectory( STATUS statusPath, File patchSourcePath, SCOPE scope) {
-        this.patchSourcePath = patchSourcePath;
-        this.statusPath = statusPath;
-        this.scope = scope;
+    private String userName;
+    
+    
+    public static PatchDirectory getInstance( STATUS statusPath, File patchSourcePath, SCOPE scope) {
+        PatchDirectory patchDirectory = new PatchDirectory();
+        patchDirectory.patchSourcePath = patchSourcePath;
+        patchDirectory.statusPath = statusPath;
+        patchDirectory.scope = scope;
+        return patchDirectory;
+    }
+    public static PatchDirectory getInstancePrivate( STATUS statusPath, File patchSourcePath, String userName) {
+        PatchDirectory patchDirectory = new PatchDirectory();
+        patchDirectory.patchSourcePath = patchSourcePath;
+        patchDirectory.statusPath = statusPath;
+        patchDirectory.scope = SCOPE.PRIVATE;
+        patchDirectory.userName = userName;
+        return patchDirectory;
     }
 
     public static class ListPatches {
@@ -141,6 +154,13 @@ public class PatchDirectory {
         return loadPatchResult;
     }
     /**
+     * return true if the path exist. For a TangoServer, there is maybe no path for this release
+     * @return
+     */
+    public boolean isPathExist() {
+        return ( patchSourcePath.exists() && patchSourcePath.isDirectory());
+    }
+    /**
      * @param onlyInstalledPatch : if null, all patches. If true, only installed patch (a file <patch>_uninstall.zip exist). if false, only non installed patch
      * @return
      */
@@ -149,7 +169,7 @@ public class PatchDirectory {
         ListPatches listPatch = new ListPatches();
         if (! patchSourcePath.exists() || ! patchSourcePath.isDirectory())
         {
-            listPatch.listEvents.add(eventCantAccessFolder);
+            listPatch.listEvents.add( new BEvent(eventCantAccessFolder, "Path["+patchSourcePath+"]"));
             return listPatch;
         }
         try {
@@ -176,7 +196,11 @@ public class PatchDirectory {
                     listPatch.listEvents.addAll(loadPatchResult.listEvents);
                     if (! BEventFactory.isError(loadPatchResult.listEvents)) {
                         if (scope!=null)
-                            loadPatchResult.patch.scope = scope;                    
+                            loadPatchResult.patch.scope = scope;
+                        if (SCOPE.PRIVATE.equals(scope)) {
+                            // set the username
+                            loadPatchResult.patch.userName= userName;
+                        }
                         listPatch.listPatch.add(loadPatchResult.patch);
                     }
                 }
